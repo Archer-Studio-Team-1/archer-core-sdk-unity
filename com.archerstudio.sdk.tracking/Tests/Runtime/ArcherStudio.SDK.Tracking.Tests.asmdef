@@ -1,0 +1,23 @@
+{
+  "name": "ArcherStudio.SDK.Tracking.Tests",
+  "rootNamespace": "ArcherStudio.SDK.Tracking.Tests",
+  "references": [
+    "ArcherStudio.SDK.Core",
+    "ArcherStudio.SDK.Tracking",
+    "UnityEngine.TestRunner",
+    "UnityEditor.TestRunner"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": true,
+  "precompiledReferences": [
+    "nunit.framework.dll"
+  ],
+  "autoReferenced": false,
+  "defineConstraints": [
+    "UNITY_INCLUDE_TESTS"
+  ],
+  "versionDefines": [],
+  "noEngineReferences": false
+}

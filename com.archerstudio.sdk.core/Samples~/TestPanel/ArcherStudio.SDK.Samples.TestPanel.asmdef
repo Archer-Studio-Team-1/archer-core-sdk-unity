@@ -1,0 +1,34 @@
+{
+  "name": "ArcherStudio.SDK.Samples.TestPanel",
+  "rootNamespace": "ArcherStudio.SDK.Examples",
+  "references": [
+    "ArcherStudio.SDK.Core",
+    "ArcherStudio.SDK.Tracking",
+    "ArcherStudio.SDK.Ads",
+    "ArcherStudio.SDK.Consent",
+    "ArcherStudio.SDK.IAP",
+    "ArcherStudio.SDK.RemoteConfig",
+    "ArcherStudio.SDK.CrashReporting",
+    "ArcherStudio.SDK.Push",
+    "ArcherStudio.SDK.DeepLink",
+    "UnityEngine.UI"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": false,
+  "defineConstraints": [],
+  "versionDefines": [
+    { "name": "com.archerstudio.sdk.consent", "expression": "", "define": "HAS_SDK_CONSENT" },
+    { "name": "com.archerstudio.sdk.tracking", "expression": "", "define": "HAS_SDK_TRACKING" },
+    { "name": "com.archerstudio.sdk.ads", "expression": "", "define": "HAS_SDK_ADS" },
+    { "name": "com.archerstudio.sdk.iap", "expression": "", "define": "HAS_SDK_IAP" },
+    { "name": "com.archerstudio.sdk.remoteconfig", "expression": "", "define": "HAS_SDK_REMOTECONFIG" },
+    { "name": "com.archerstudio.sdk.crashreporting", "expression": "", "define": "HAS_SDK_CRASHREPORTING" },
+    { "name": "com.archerstudio.sdk.push", "expression": "", "define": "HAS_SDK_PUSH" },
+    { "name": "com.archerstudio.sdk.deeplink", "expression": "", "define": "HAS_SDK_DEEPLINK" }
+  ],
+  "noEngineReferences": false
+}

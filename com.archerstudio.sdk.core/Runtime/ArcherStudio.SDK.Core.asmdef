@@ -1,0 +1,34 @@
+{
+  "name": "ArcherStudio.SDK.Core",
+  "rootNamespace": "ArcherStudio.SDK.Core",
+  "references": [
+    "UnityEngine.UI",
+    "Unity.Services.Core",
+    "UniTask"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [],
+  "versionDefines": [
+    {
+      "name": "com.unity.services.core",
+      "expression": "",
+      "define": "HAS_UNITY_SERVICES"
+    },
+    {
+      "name": "com.google.firebase.app",
+      "expression": "",
+      "define": "HAS_FIREBASE_APP"
+    },
+    {
+      "name": "com.google.firebase.crashlytics",
+      "expression": "",
+      "define": "HAS_FIREBASE_CRASHLYTICS"
+    }
+  ],
+  "noEngineReferences": false
+}

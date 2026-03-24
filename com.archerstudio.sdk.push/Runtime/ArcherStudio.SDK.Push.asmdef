@@ -1,0 +1,22 @@
+{
+  "name": "ArcherStudio.SDK.Push",
+  "rootNamespace": "ArcherStudio.SDK.Push",
+  "references": [
+    "ArcherStudio.SDK.Core"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [],
+  "versionDefines": [
+    {
+      "name": "com.google.firebase.messaging",
+      "expression": "",
+      "define": "HAS_FIREBASE_MESSAGING"
+    }
+  ],
+  "noEngineReferences": false
+}

@@ -1,0 +1,28 @@
+{
+  "name": "ArcherStudio.SDK.Consent",
+  "rootNamespace": "ArcherStudio.SDK.Consent",
+  "references": [
+    "ArcherStudio.SDK.Core",
+    "MaxSdk.Scripts"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [],
+  "versionDefines": [
+    {
+      "name": "com.google.ads.mobile",
+      "expression": "",
+      "define": "HAS_GOOGLE_UMP"
+    },
+    {
+      "name": "com.applovin.mediation.ads",
+      "expression": "",
+      "define": "HAS_APPLOVIN_MAX_SDK"
+    }
+  ],
+  "noEngineReferences": false
+}

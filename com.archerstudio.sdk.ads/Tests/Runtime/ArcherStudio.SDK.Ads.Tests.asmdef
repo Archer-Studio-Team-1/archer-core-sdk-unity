@@ -1,0 +1,23 @@
+{
+  "name": "ArcherStudio.SDK.Ads.Tests",
+  "rootNamespace": "ArcherStudio.SDK.Ads.Tests",
+  "references": [
+    "ArcherStudio.SDK.Core",
+    "ArcherStudio.SDK.Ads",
+    "UnityEngine.TestRunner",
+    "UnityEditor.TestRunner"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": true,
+  "precompiledReferences": [
+    "nunit.framework.dll"
+  ],
+  "autoReferenced": false,
+  "defineConstraints": [
+    "UNITY_INCLUDE_TESTS"
+  ],
+  "versionDefines": [],
+  "noEngineReferences": false
+}

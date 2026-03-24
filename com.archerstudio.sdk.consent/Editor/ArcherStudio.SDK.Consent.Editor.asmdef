@@ -1,0 +1,19 @@
+{
+  "name": "ArcherStudio.SDK.Consent.Editor",
+  "rootNamespace": "ArcherStudio.SDK.Consent.Editor",
+  "references": [
+    "ArcherStudio.SDK.Core",
+    "ArcherStudio.SDK.Consent"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false
+}

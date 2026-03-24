@@ -1,0 +1,22 @@
+{
+  "name": "ArcherStudio.SDK.RemoteConfig",
+  "rootNamespace": "ArcherStudio.SDK.RemoteConfig",
+  "references": [
+    "ArcherStudio.SDK.Core"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [],
+  "versionDefines": [
+    {
+      "name": "com.google.firebase.remote-config",
+      "expression": "",
+      "define": "HAS_FIREBASE_REMOTE_CONFIG"
+    }
+  ],
+  "noEngineReferences": false
+}

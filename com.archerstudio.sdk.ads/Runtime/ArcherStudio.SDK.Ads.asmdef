@@ -1,0 +1,25 @@
+{
+  "name": "ArcherStudio.SDK.Ads",
+  "rootNamespace": "ArcherStudio.SDK.Ads",
+  "references": [
+    "ArcherStudio.SDK.Core",
+    "ArcherStudio.SDK.Consent",
+    "ArcherStudio.SDK.Tracking",
+    "MaxSdk.Scripts"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [],
+  "versionDefines": [
+    {
+      "name": "com.applovin.mediation.ads",
+      "expression": "",
+      "define": "HAS_APPLOVIN_MAX_SDK"
+    }
+  ],
+  "noEngineReferences": false
+}

@@ -1,0 +1,31 @@
+{
+  "name": "ArcherStudio.SDK.IAP",
+  "rootNamespace": "ArcherStudio.SDK.IAP",
+  "references": [
+    "ArcherStudio.SDK.Core",
+    "ArcherStudio.SDK.Consent",
+    "ArcherStudio.SDK.Tracking",
+    "Unity.Purchasing",
+    "Unity.Services.Core"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [],
+  "versionDefines": [
+    {
+      "name": "com.unity.purchasing",
+      "expression": "",
+      "define": "HAS_UNITY_IAP"
+    },
+    {
+      "name": "com.unity.services.core",
+      "expression": "",
+      "define": "HAS_UNITY_SERVICES"
+    }
+  ],
+  "noEngineReferences": false
+}

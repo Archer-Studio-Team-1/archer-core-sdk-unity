@@ -1,0 +1,13 @@
+{
+  "name": "com.archerstudio.sdk.consent",
+  "version": "0.1.3",
+  "displayName": "Archer Studio SDK - Consent",
+  "description": "Consent management for GDPR, CCPA, and iOS ATT. Supports Google UMP and manual consent flows.",
+  "unity": "6000.0",
+  "author": {
+    "name": "QuanNV - Team 1"
+  },
+  "dependencies": {
+    "com.archerstudio.sdk.core": "0.1.3"
+  }
+}

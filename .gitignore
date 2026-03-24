@@ -1,0 +1,13 @@
+# IDE
+.vs/
+.idea/
+*.csproj
+*.sln
+*.DotSettings.user
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Unity build artifacts
+*.unitypackage

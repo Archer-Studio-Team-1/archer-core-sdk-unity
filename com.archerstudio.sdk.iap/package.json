@@ -1,0 +1,15 @@
+{
+  "name": "com.archerstudio.sdk.iap",
+  "version": "0.1.3",
+  "displayName": "Archer Studio SDK - IAP",
+  "description": "In-App Purchase management with Unity IAP wrapper, receipt validation, and purchase tracking.",
+  "unity": "6000.0",
+  "author": {
+    "name": "QuanNV - Team 1"
+  },
+  "dependencies": {
+    "com.archerstudio.sdk.core": "0.1.3",
+    "com.archerstudio.sdk.consent": "0.1.3",
+    "com.archerstudio.sdk.tracking": "0.1.3"
+  }
+}

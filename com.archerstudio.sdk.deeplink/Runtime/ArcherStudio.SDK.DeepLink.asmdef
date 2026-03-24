@@ -1,0 +1,28 @@
+{
+  "name": "ArcherStudio.SDK.DeepLink",
+  "rootNamespace": "ArcherStudio.SDK.DeepLink",
+  "references": [
+    "ArcherStudio.SDK.Core",
+    "AdjustSdk.Scripts"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [],
+  "versionDefines": [
+    {
+      "name": "com.adjust.sdk",
+      "expression": "",
+      "define": "HAS_ADJUST_SDK"
+    },
+    {
+      "name": "com.google.firebase.dynamic-links",
+      "expression": "",
+      "define": "HAS_FIREBASE_DYNAMIC_LINKS"
+    }
+  ],
+  "noEngineReferences": false
+}

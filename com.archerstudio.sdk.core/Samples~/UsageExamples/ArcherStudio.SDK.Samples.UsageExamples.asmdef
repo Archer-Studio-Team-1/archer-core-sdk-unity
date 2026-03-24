@@ -1,0 +1,24 @@
+{
+  "name": "ArcherStudio.SDK.Samples.UsageExamples",
+  "rootNamespace": "ArcherStudio.SDK.Examples",
+  "references": [
+    "ArcherStudio.SDK.Core",
+    "ArcherStudio.SDK.Tracking",
+    "ArcherStudio.SDK.Ads",
+    "ArcherStudio.SDK.Consent",
+    "ArcherStudio.SDK.IAP",
+    "ArcherStudio.SDK.RemoteConfig",
+    "ArcherStudio.SDK.CrashReporting",
+    "ArcherStudio.SDK.Push",
+    "ArcherStudio.SDK.DeepLink"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": false,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false
+}

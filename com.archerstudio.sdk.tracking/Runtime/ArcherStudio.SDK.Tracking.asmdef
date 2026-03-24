@@ -1,0 +1,29 @@
+{
+  "name": "ArcherStudio.SDK.Tracking",
+  "rootNamespace": "ArcherStudio.SDK.Tracking",
+  "references": [
+    "ArcherStudio.SDK.Core",
+    "ArcherStudio.SDK.Consent",
+    "AdjustSdk.Scripts"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [],
+  "versionDefines": [
+    {
+      "name": "com.google.firebase.analytics",
+      "expression": "",
+      "define": "HAS_FIREBASE_SDK"
+    },
+    {
+      "name": "com.adjust.sdk",
+      "expression": "",
+      "define": "HAS_ADJUST_SDK"
+    }
+  ],
+  "noEngineReferences": false
+}

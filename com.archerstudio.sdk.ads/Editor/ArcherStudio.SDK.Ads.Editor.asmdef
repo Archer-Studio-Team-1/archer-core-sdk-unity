@@ -1,0 +1,19 @@
+{
+  "name": "ArcherStudio.SDK.Ads.Editor",
+  "rootNamespace": "ArcherStudio.SDK.Ads.Editor",
+  "references": [
+    "ArcherStudio.SDK.Core",
+    "ArcherStudio.SDK.Ads"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false
+}

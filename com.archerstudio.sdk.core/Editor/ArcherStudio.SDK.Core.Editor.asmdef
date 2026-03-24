@@ -1,0 +1,19 @@
+{
+  "name": "ArcherStudio.SDK.Core.Editor",
+  "rootNamespace": "ArcherStudio.SDK.Core.Editor",
+  "references": [
+    "ArcherStudio.SDK.Core",
+    "UnityEngine.UI"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false
+}

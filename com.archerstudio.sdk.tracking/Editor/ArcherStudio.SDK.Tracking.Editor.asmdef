@@ -1,0 +1,19 @@
+{
+  "name": "ArcherStudio.SDK.Tracking.Editor",
+  "rootNamespace": "ArcherStudio.SDK.Tracking.Editor",
+  "references": [
+    "ArcherStudio.SDK.Core",
+    "ArcherStudio.SDK.Tracking"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false
+}

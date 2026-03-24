@@ -1,0 +1,30 @@
+{
+  "name": "com.archerstudio.sdk.core",
+  "version": "0.1.3",
+  "displayName": "Archer Studio SDK - Core",
+  "description": "Core foundation for ArcherStudioSDK: initialization orchestration, dependency graph, event bus, configuration, logging, and base utilities.",
+  "unity": "6000.0",
+  "author": {
+    "name": "QuanNV - Team 1"
+  },
+  "keywords": [
+    "sdk",
+    "core",
+    "mobile",
+    "archerstudio"
+  ],
+  "dependencies": {
+  },
+  "samples": [
+    {
+      "displayName": "Test Panel",
+      "description": "Runtime debug & test UI overlay. Test buttons for all SDK modules with on-screen log viewer. Toggle with F12 (desktop) or 3-finger tap (mobile).",
+      "path": "Samples~/TestPanel"
+    },
+    {
+      "displayName": "Usage Examples",
+      "description": "Complete code examples: SDK lifecycle, consent, tracking (all event types), ads, user profile, EventBus custom events, and game integration patterns.",
+      "path": "Samples~/UsageExamples"
+    }
+  ]
+}
