@@ -137,7 +137,7 @@ namespace ArcherStudio.SDK.IAP {
                 double revenue = productInfo.HasValue ? (double)productInfo.Value.PriceDecimal : 0;
                 int revenueMicro = (int)(revenue * 1_000_000);
                 string status = result.Success ? "success" : "fail";
-                string failReason = result.Success ? null : result.ErrorMessage;
+                string failReason = result.Success ? null : MapToBillingResponseCode(result.FailureReason);
 
                 trackingManager?.Track(new IapRevenueEvent(
                     productId, revenueMicro, status, failReason, reason));
@@ -230,6 +230,23 @@ namespace ArcherStudio.SDK.IAP {
             trackingManager.TrackIAPRevenue(
                 result.ProductId, revenue, currency,
                 result.TransactionId ?? "", result.Receipt ?? "", source);
+        }
+
+        /// <summary>
+        /// Map PurchaseFailureReason to Android BillingResponseCode string per
+        /// https://developer.android.com/reference/com/android/billingclient/api/BillingClient.BillingResponseCode
+        /// </summary>
+        private static string MapToBillingResponseCode(PurchaseFailureReason reason) {
+            switch (reason) {
+                case PurchaseFailureReason.UserCancelled: return "USER_CANCELED";
+                case PurchaseFailureReason.PurchasingUnavailable: return "BILLING_UNAVAILABLE";
+                case PurchaseFailureReason.ProductUnavailable: return "ITEM_UNAVAILABLE";
+                case PurchaseFailureReason.DuplicateTransaction: return "ITEM_ALREADY_OWNED";
+                case PurchaseFailureReason.PaymentDeclined: return "ERROR";
+                case PurchaseFailureReason.ExistingPurchasePending: return "ERROR";
+                case PurchaseFailureReason.SignatureInvalid: return "ERROR";
+                default: return "ERROR";
+            }
         }
 
         // ─── Internal ───
