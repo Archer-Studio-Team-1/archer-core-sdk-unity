@@ -3,6 +3,10 @@ using System.Collections.Generic;
 
 namespace ArcherStudio.SDK.Tracking.Events {
 
+    /// <summary>
+    /// V2: button_click — khi người chơi click vào button.
+    /// Params: category, name, desc (always included, Null default)
+    /// </summary>
     public class ButtonClickEvent : GameTrackingEvent {
 
         [Serializable]
@@ -20,15 +24,15 @@ namespace ArcherStudio.SDK.Tracking.Events {
         private readonly string _desc;
 
         public ButtonClickEvent(string category, string name, string desc = null) {
-            _category = category;
-            _name = name;
-            _desc = desc;
+            _category = category ?? "Null";
+            _name = name ?? "Null";
+            _desc = desc ?? "Null";
         }
 
         protected override void BuildParams(Dictionary<string, object> dict) {
             dict.Add(TrackingConstants.PAR_CATEGORY, _category);
             dict.Add(TrackingConstants.PAR_NAME, _name);
-            if (!string.IsNullOrEmpty(_desc)) dict.Add(TrackingConstants.PAR_DESC, _desc);
+            dict.Add(TrackingConstants.PAR_DESC, _desc);
         }
     }
 }

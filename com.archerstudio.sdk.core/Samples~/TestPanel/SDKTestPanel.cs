@@ -487,8 +487,6 @@ namespace ArcherStudio.SDK.Examples {
             CreateButton(c, "Tutorial Complete", OnTrackTutorialComplete, CLR_TRACKING);
             CreateButton(c, "Button Click", OnTrackButtonClick, CLR_TRACKING);
             CreateButton(c, "Feature Unlock", OnTrackFeatureUnlock, CLR_TRACKING);
-            CreateButton(c, "Feature Open", OnTrackFeatureOpen, CLR_TRACKING);
-            CreateButton(c, "Feature Close", OnTrackFeatureClose, CLR_TRACKING);
             CreateButton(c, "Earn Resource", OnTrackEarnResource, CLR_TRACKING);
             CreateButton(c, "Spend Resource", OnTrackSpendResource, CLR_TRACKING);
             CreateButton(c, "IAP Revenue (Success)", OnTrackIapRevenueSuccess, CLR_TRACKING);
@@ -883,16 +881,6 @@ namespace ArcherStudio.SDK.Examples {
             _testCounter++;
             SDKLogger.Info(Tag, $"Track: FeatureUnlockEvent (feature_{_testCounter})");
             TrackingManager.Instance?.Track(new FeatureUnlockEvent($"feature_{_testCounter}"));
-        }
-
-        private void OnTrackFeatureOpen() {
-            SDKLogger.Info(Tag, $"Track: FeatureOpenEvent ({_featureName})");
-            TrackingManager.Instance?.Track(new FeatureOpenEvent(_featureName));
-        }
-
-        private void OnTrackFeatureClose() {
-            SDKLogger.Info(Tag, $"Track: FeatureCloseEvent ({_featureName}, 5000ms)");
-            TrackingManager.Instance?.Track(new FeatureCloseEvent(_featureName, 5000));
         }
 
         private void OnTrackEarnResource() {

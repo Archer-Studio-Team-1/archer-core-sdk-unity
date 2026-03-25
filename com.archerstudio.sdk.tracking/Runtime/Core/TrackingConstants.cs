@@ -13,9 +13,8 @@ namespace ArcherStudio.SDK.Tracking {
         public const string EVT_STAGE_START = "stage_start";
         public const string EVT_STAGE_END = "stage_end";
         public const string EVT_FEATURE_UNLOCK = "feature_unlock";
-        public const string EVT_FEATURE_OPEN = "feature_open";
-        public const string EVT_FEATURE_CLOSE = "feature_close";
         public const string EVT_BUTTON_CLICK = "button_click";
+        public const string EVT_TAROT_CARD = "tarot_card";
         public const string EVT_EARN_RESOURCE = "earn_resource";
         public const string EVT_SPEND_RESOURCE = "spend_resource";
         public const string EVT_EXPLORATION_END = "exploration_end";
@@ -50,10 +49,12 @@ namespace ArcherStudio.SDK.Tracking {
         public const string PAR_TASK_NAME = "task_name";
 
         public const string PAR_FEATURE_ID = "feature_id";
-        public const string PAR_DURATION_FEATURE = "duration_feature";
 
         public const string PAR_NAME = "name";
         public const string PAR_DESC = "desc";
+
+        public const string PAR_REPLAY_COUNT = "replay_count";
+        public const string PAR_PLAY_COUNT = "play_count";
 
         public const string PAR_RESOURCE_ID = "resource_id";
         public const string PAR_SOURCE_ID = "source_id";
