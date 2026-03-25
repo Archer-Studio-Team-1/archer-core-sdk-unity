@@ -17,12 +17,10 @@ namespace ArcherStudio.SDK.Tracking {
         public const string EVT_FEATURE_CLOSE = "feature_close";
         public const string EVT_BUTTON_CLICK = "button_click";
         public const string EVT_EARN_RESOURCE = "earn_resource";
-        public const string EVT_BUY_RESOURCE = "buy_resource";
         public const string EVT_SPEND_RESOURCE = "spend_resource";
         public const string EVT_EXPLORATION_START = "exploration_start";
         public const string EVT_EXPLORATION_END = "exploration_end";
         public const string EVT_EXPLORATION_RANK_UP = "exploration_rank_up";
-        public const string EVT_LOADING_START = "loading_start";
         public const string EVT_LOADING_RESULT = "loading_result";
         public const string EVT_IAP_REVENUE = "iap_revenue";
 
@@ -52,14 +50,14 @@ namespace ArcherStudio.SDK.Tracking {
         public const string PAR_NAME = "name";
         public const string PAR_DESC = "desc";
 
-        public const string PAR_ITEM_CATEGORY = "item_category";
-        public const string PAR_ITEM_ID = "item_id";
-        public const string PAR_SOURCE = "source";
+        public const string PAR_RESOURCE_ID = "resource_id";
         public const string PAR_SOURCE_ID = "source_id";
-        public const string PAR_REMAINING_VALUE = "remaining_value";
-        public const string PAR_TOTAL_EARN_VALUE = "total_earn_value";
-        public const string PAR_TOTAL_BOUGHT_VALUE = "total_bought_value";
-        public const string PAR_TOTAL_SPENT_VALUE = "total_spent_value";
+        public const string PAR_SOURCE_TYPE = "source_type";
+
+        // ─── Source Type Values ───
+        public const string SOURCE_TYPE_IAP = "iap";
+        public const string SOURCE_TYPE_FREE = "free";
+        public const string SOURCE_TYPE_ADS = "ads";
 
         public const string PAR_SPELL_ID = "spell_id";
         public const string PAR_SPELL_LEVEL = "spell_level";
@@ -75,16 +73,15 @@ namespace ArcherStudio.SDK.Tracking {
         public const string PAR_LOSE_BY = "lose_by";
         public const string PAR_RANK_LEVEL = "rank_level";
 
-        public const string PAR_IS_USER_ACTION = "is_user_action";
-        public const string PAR_TIMEOUT_MSEC = "timeout_msec";
+        public const string PAR_LOADING_TIME = "loading_time";
         public const string PAR_FPS = "fps";
+        public const string PAR_LOADING_STATUS = "loading_status";
 
         public const string PAR_PRODUCT_ID = "product_id";
         public const string PAR_IAP_REVENUE_MICRO = "iap_revenue_micro";
         public const string PAR_PURCHASE_STATUS = "purchase_status";
         public const string PAR_FAIL_REASON = "fail_reason";
         public const string PAR_RESULT_CODE = "result_code";
-        public const string PAR_STATUS = "status"; // used by LoadingEvents (will be migrated later)
 
         // ─── Resource Sources ───
         public const string SOURCE_MAIN = "main";

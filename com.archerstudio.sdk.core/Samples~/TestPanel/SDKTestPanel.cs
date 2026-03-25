@@ -493,7 +493,6 @@ namespace ArcherStudio.SDK.Examples {
             CreateButton(c, "Spend Resource", OnTrackSpendResource, CLR_TRACKING);
             CreateButton(c, "IAP Revenue (Success)", OnTrackIapRevenueSuccess, CLR_TRACKING);
             CreateButton(c, "IAP Revenue (Fail)", OnTrackIapRevenueFail, CLR_TRACKING);
-            CreateButton(c, "Loading Start", OnTrackLoadingStart, CLR_TRACKING);
             CreateButton(c, "Loading Result", OnTrackLoadingResult, CLR_TRACKING);
             CreateButton(c, "Exploration Start", OnTrackExplorationStart, CLR_TRACKING);
             CreateButton(c, "Exploration End", OnTrackExplorationEnd, CLR_TRACKING);
@@ -932,15 +931,10 @@ namespace ArcherStudio.SDK.Examples {
                 _purchaseItemId, 0, "fail", "User cancelled the purchase", "USER_CANCELED", _purchaseItemTrigger));
         }
 
-        private void OnTrackLoadingStart() {
-            SDKLogger.Info(Tag, "Track: LoadingStartEvent");
-            TrackingManager.Instance?.Track(new LoadingStartEvent());
-        }
-
         private void OnTrackLoadingResult() {
             int fps = (int)(1f / Time.deltaTime);
-            SDKLogger.Info(Tag, $"Track: LoadingResultEvent (timeout=5000, fps={fps}, status=1)");
-            TrackingManager.Instance?.Track(new LoadingResultEvent(5000, fps, 1));
+            SDKLogger.Info(Tag, $"Track: LoadingResultEvent (loading_time=5000, fps={fps}, status=success)");
+            TrackingManager.Instance?.Track(new LoadingResultEvent(5000, fps, "success"));
         }
 
         private void OnTrackExplorationStart() {

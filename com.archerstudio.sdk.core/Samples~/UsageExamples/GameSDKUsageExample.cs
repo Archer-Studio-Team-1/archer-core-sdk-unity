@@ -151,47 +151,24 @@ namespace ArcherStudio.SDK.Examples {
 
         /// <summary>
         /// Track khi user kiếm được resource (reward, loot, ...).
+        /// v2: resource_id, source_id, source_type (iap/free/ads), value (int)
         /// </summary>
         public void TrackEarnResource(
-            string itemId, string source, string sourceId,
-            double amount, double remaining, double totalEarned) {
-
-            var data = new ResourceTrackingData(
-                ResourceCategory.Currency, itemId,
-                new TrackingSource(ResourceEventType.Earn, source, sourceId));
+            string resourceId, string sourceId, string sourceType, int value) {
 
             TrackingManager.Instance.Track(
-                new EarnResourceEvent(data, amount, remaining, totalEarned));
+                new EarnResourceEvent(resourceId, sourceId, sourceType, value));
         }
 
         /// <summary>
         /// Track khi user tiêu resource (upgrade, mua item, ...).
+        /// v2: resource_id, source_id, source_type (iap/free/ads), value (int)
         /// </summary>
         public void TrackSpendResource(
-            string itemId, string source, string sourceId,
-            double amount, double remaining, double totalSpent) {
-
-            var data = new ResourceTrackingData(
-                ResourceCategory.Currency, itemId,
-                new TrackingSource(ResourceEventType.Spend, source, sourceId));
+            string resourceId, string sourceId, string sourceType, int value) {
 
             TrackingManager.Instance.Track(
-                new SpendResourceEvent(data, amount, remaining, totalSpent));
-        }
-
-        /// <summary>
-        /// Track khi user mua resource bằng tiền thật (IAP).
-        /// </summary>
-        public void TrackBuyResource(
-            string itemId, string source, string sourceId,
-            double amount, double remaining, double totalBought) {
-
-            var data = new ResourceTrackingData(
-                ResourceCategory.Currency, itemId,
-                new TrackingSource(ResourceEventType.Buy, source, sourceId));
-
-            TrackingManager.Instance.Track(
-                new BuyResourceEvent(data, amount, remaining, totalBought));
+                new SpendResourceEvent(resourceId, sourceId, sourceType, value));
         }
 
         // ─── IAP Revenue Tracking (v2) ───
@@ -671,15 +648,10 @@ namespace ArcherStudio.SDK.Examples {
             TrackingManager.Instance.Track(
                 new IapRevenueEvent(productId, revenueMicro, "success", null, null, "click"));
 
-            // Track resource bought
+            // Track resource earned via IAP (v2: buy → earn with source_type=iap)
             _totalGems += (double)gemAmount;
-            var data = new ResourceTrackingData(
-                ResourceCategory.Currency, "gem",
-                new TrackingSource(ResourceEventType.Buy, "iap", productId));
-            double totalBought = TrackingManager.Instance.CurrentUserProfile
-                .AddBought("gem", (double)gemAmount);
             TrackingManager.Instance.Track(
-                new BuyResourceEvent(data, (double)gemAmount, _totalGems, totalBought));
+                new EarnResourceEvent("gem", productId, TrackingConstants.SOURCE_TYPE_IAP, gemAmount));
 
             // Update profile
             TrackingManager.Instance.UpdateUserProfile(p => {
@@ -732,15 +704,9 @@ namespace ArcherStudio.SDK.Examples {
         // ─── Helpers ───
 
         private void TrackEarnGems(int amount) {
-            var data = new ResourceTrackingData(
-                ResourceCategory.Currency, "gem",
-                new TrackingSource(
-                    ResourceEventType.Earn, "level_reward",
-                    $"level_{_currentLevel}"));
-
             TrackingManager.Instance.Track(
-                new EarnResourceEvent(
-                    data, (double)amount, _totalGems, _totalGemsEarned));
+                new EarnResourceEvent("gem", "level_reward",
+                    TrackingConstants.SOURCE_TYPE_FREE, amount));
         }
 
         private void GrantReward(int gems) {

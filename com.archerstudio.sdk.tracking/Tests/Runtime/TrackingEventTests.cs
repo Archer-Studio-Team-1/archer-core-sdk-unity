@@ -86,6 +86,187 @@ namespace ArcherStudio.SDK.Tracking.Tests {
             Assert.AreEqual(0, parameters[TrackingConstants.PAR_IAP_REVENUE_MICRO]);
         }
 
+        // ─── LoadingResultEvent (v2) ───
+
+        [Test]
+        public void LoadingResultEvent_EventName_ReturnsLoadingResult() {
+            var evt = new LoadingResultEvent(5000, 60, "success");
+
+            Assert.AreEqual(TrackingConstants.EVT_LOADING_RESULT, evt.EventName);
+        }
+
+        [Test]
+        public void LoadingResultEvent_ToParams_ContainsV2Params() {
+            var evt = new LoadingResultEvent(5000, 60, "success");
+
+            var parameters = evt.ToParams();
+
+            Assert.AreEqual(5000, parameters[TrackingConstants.PAR_LOADING_TIME]);
+            Assert.AreEqual(60, parameters[TrackingConstants.PAR_FPS]);
+            Assert.AreEqual("success", parameters[TrackingConstants.PAR_LOADING_STATUS]);
+            Assert.AreEqual(3, parameters.Count);
+        }
+
+        [Test]
+        public void LoadingResultEvent_Fail_Status() {
+            var evt = new LoadingResultEvent(12000, 30, "fail");
+
+            var parameters = evt.ToParams();
+
+            Assert.AreEqual("fail", parameters[TrackingConstants.PAR_LOADING_STATUS]);
+            Assert.AreEqual(12000, parameters[TrackingConstants.PAR_LOADING_TIME]);
+        }
+
+        [Test]
+        public void LoadingResultEvent_NullStatus_DefaultsToNull() {
+            var evt = new LoadingResultEvent(0, 0, null);
+
+            var parameters = evt.ToParams();
+
+            Assert.AreEqual("Null", parameters[TrackingConstants.PAR_LOADING_STATUS]);
+        }
+
+        [Test]
+        public void LoadingStartEvent_ShouldNotExist() {
+            var type = typeof(TrackingConstants);
+            Assert.IsNull(type.GetField("EVT_LOADING_START"), "EVT_LOADING_START should be removed");
+        }
+
+        [Test]
+        public void OldLoadingParams_ShouldNotExist() {
+            var type = typeof(TrackingConstants);
+            Assert.IsNull(type.GetField("PAR_TIMEOUT_MSEC"), "PAR_TIMEOUT_MSEC should be removed");
+            Assert.IsNull(type.GetField("PAR_STATUS"), "PAR_STATUS should be removed");
+            Assert.IsNull(type.GetField("PAR_IS_USER_ACTION"), "PAR_IS_USER_ACTION should be removed");
+        }
+
+        // ─── TutorialEvent ───
+
+        [Test]
+        public void TutorialEvent_EventName_ReturnsTutorial() {
+            var evt = new TutorialEvent("onboarding", "tap_button", 1);
+
+            Assert.AreEqual(TrackingConstants.EVT_TUTORIAL, evt.EventName);
+        }
+
+        [Test]
+        public void TutorialEvent_ToParams_ContainsAllParams() {
+            var evt = new TutorialEvent("onboarding", "tap_button", 1);
+
+            var parameters = evt.ToParams();
+
+            Assert.AreEqual("onboarding", parameters[TrackingConstants.PAR_TUT_CATEGORY]);
+            Assert.AreEqual("tap_button", parameters[TrackingConstants.PAR_TUT_NAME]);
+            Assert.AreEqual(1, parameters[TrackingConstants.PAR_TUT_INDEX]);
+            Assert.AreEqual(3, parameters.Count);
+        }
+
+        [Test]
+        public void TutorialCompleteEvent_HasFixedValues() {
+            var evt = new TutorialCompleteEvent();
+
+            var parameters = evt.ToParams();
+
+            Assert.AreEqual("tutorial", parameters[TrackingConstants.PAR_TUT_CATEGORY]);
+            Assert.AreEqual("finish", parameters[TrackingConstants.PAR_TUT_NAME]);
+            Assert.AreEqual(100, parameters[TrackingConstants.PAR_TUT_INDEX]);
+        }
+
+        // ─── EarnResourceEvent (v2) ───
+
+        [Test]
+        public void EarnResourceEvent_EventName_ReturnsEarnResource() {
+            var evt = new EarnResourceEvent("Gem", "gacha", "free", 100);
+
+            Assert.AreEqual(TrackingConstants.EVT_EARN_RESOURCE, evt.EventName);
+        }
+
+        [Test]
+        public void EarnResourceEvent_ToParams_ContainsV2Params() {
+            var evt = new EarnResourceEvent("Gem", "gacha", "free", 100);
+
+            var parameters = evt.ToParams();
+
+            Assert.AreEqual("Gem", parameters[TrackingConstants.PAR_RESOURCE_ID]);
+            Assert.AreEqual("gacha", parameters[TrackingConstants.PAR_SOURCE_ID]);
+            Assert.AreEqual("free", parameters[TrackingConstants.PAR_SOURCE_TYPE]);
+            Assert.AreEqual(100, parameters[TrackingConstants.PAR_VALUE]);
+            Assert.AreEqual(4, parameters.Count);
+        }
+
+        [Test]
+        public void EarnResourceEvent_NullDefaults() {
+            var evt = new EarnResourceEvent(null, null, null, 0);
+
+            var parameters = evt.ToParams();
+
+            Assert.AreEqual("Null", parameters[TrackingConstants.PAR_RESOURCE_ID]);
+            Assert.AreEqual("Null", parameters[TrackingConstants.PAR_SOURCE_ID]);
+            Assert.AreEqual("Null", parameters[TrackingConstants.PAR_SOURCE_TYPE]);
+            Assert.AreEqual(0, parameters[TrackingConstants.PAR_VALUE]);
+        }
+
+        // ─── SpendResourceEvent (v2) ───
+
+        [Test]
+        public void SpendResourceEvent_EventName_ReturnsSpendResource() {
+            var evt = new SpendResourceEvent("Gem", "forge", "free", 50);
+
+            Assert.AreEqual(TrackingConstants.EVT_SPEND_RESOURCE, evt.EventName);
+        }
+
+        [Test]
+        public void SpendResourceEvent_ToParams_ContainsV2Params() {
+            var evt = new SpendResourceEvent("Gem", "forge", "free", 50);
+
+            var parameters = evt.ToParams();
+
+            Assert.AreEqual("Gem", parameters[TrackingConstants.PAR_RESOURCE_ID]);
+            Assert.AreEqual("forge", parameters[TrackingConstants.PAR_SOURCE_ID]);
+            Assert.AreEqual("free", parameters[TrackingConstants.PAR_SOURCE_TYPE]);
+            Assert.AreEqual(50, parameters[TrackingConstants.PAR_VALUE]);
+            Assert.AreEqual(4, parameters.Count);
+        }
+
+        [Test]
+        public void SpendResourceEvent_IapSourceType() {
+            var evt = new SpendResourceEvent("Gem", "shop", "iap", 200);
+
+            var parameters = evt.ToParams();
+
+            Assert.AreEqual("iap", parameters[TrackingConstants.PAR_SOURCE_TYPE]);
+        }
+
+        [Test]
+        public void SpendResourceEvent_AdsSourceType() {
+            var evt = new SpendResourceEvent("Gem", "ads_gold_offer", "ads", 30);
+
+            var parameters = evt.ToParams();
+
+            Assert.AreEqual("ads", parameters[TrackingConstants.PAR_SOURCE_TYPE]);
+        }
+
+        // ─── Removed: BuyResourceEvent, old resource params ───
+
+        [Test]
+        public void BuyResourceEvent_ShouldNotExist() {
+            var type = typeof(TrackingConstants);
+            Assert.IsNull(type.GetField("EVT_BUY_RESOURCE"), "EVT_BUY_RESOURCE should be removed");
+        }
+
+        [Test]
+        public void OldResourceParams_ShouldNotExist() {
+            var type = typeof(TrackingConstants);
+            string[] removed = {
+                "PAR_ITEM_CATEGORY", "PAR_ITEM_ID", "PAR_SOURCE",
+                "PAR_REMAINING_VALUE", "PAR_TOTAL_EARN_VALUE",
+                "PAR_TOTAL_BOUGHT_VALUE", "PAR_TOTAL_SPENT_VALUE"
+            };
+            foreach (var name in removed) {
+                Assert.IsNull(type.GetField(name), $"Removed constant '{name}' should not exist");
+            }
+        }
+
         // ─── GenericGameTrackingEvent ───
 
         [Test]

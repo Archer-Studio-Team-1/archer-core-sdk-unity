@@ -4,78 +4,43 @@ using System.ComponentModel;
 
 namespace ArcherStudio.SDK.Tracking.Events {
 
+    /// <summary>
+    /// Base class for v2 resource events (earn_resource, spend_resource).
+    /// Params: resource_id, source_id, source_type, value
+    /// </summary>
     public abstract class ResourceEvent : GameTrackingEvent {
-        protected readonly ResourceTrackingData Data;
-        protected readonly ulong Value;
-        protected readonly ulong RemainingValue;
+        protected readonly string ResourceId;
+        protected readonly string SourceId;
+        protected readonly string SourceType;
+        protected readonly int Value;
 
-        protected ResourceEvent(ResourceTrackingData data, ulong value, ulong remainingValue) {
-            Data = data;
+        protected ResourceEvent(string resourceId, string sourceId, string sourceType, int value) {
+            ResourceId = resourceId ?? "Null";
+            SourceId = sourceId ?? "Null";
+            SourceType = sourceType ?? "Null";
             Value = value;
-            RemainingValue = remainingValue;
         }
 
         protected override void BuildParams(Dictionary<string, object> dict) {
-            dict.Add(TrackingConstants.PAR_ITEM_CATEGORY, Data.ItemCategory);
-            dict.Add(TrackingConstants.PAR_ITEM_ID, Data.ItemId);
-            dict.Add(TrackingConstants.PAR_SOURCE, Data.TrackingSource.Source);
-            if (!string.IsNullOrEmpty(Data.TrackingSource.SourceId)) {
-                dict.Add(TrackingConstants.PAR_SOURCE_ID, Data.TrackingSource.SourceId);
-            }
+            dict.Add(TrackingConstants.PAR_RESOURCE_ID, ResourceId);
+            dict.Add(TrackingConstants.PAR_SOURCE_ID, SourceId);
+            dict.Add(TrackingConstants.PAR_SOURCE_TYPE, SourceType);
             dict.Add(TrackingConstants.PAR_VALUE, Value);
-            dict.Add(TrackingConstants.PAR_REMAINING_VALUE, RemainingValue);
         }
     }
 
     public class EarnResourceEvent : ResourceEvent {
         public override string EventName => TrackingConstants.EVT_EARN_RESOURCE;
 
-        private readonly ulong _totalEarnValue;
-
-        public EarnResourceEvent(ResourceTrackingData data, ulong value,
-            ulong remainingValue, ulong totalEarnValue)
-            : base(data, value, remainingValue) {
-            _totalEarnValue = totalEarnValue;
-        }
-
-        protected override void BuildParams(Dictionary<string, object> dict) {
-            base.BuildParams(dict);
-            dict.Add(TrackingConstants.PAR_TOTAL_EARN_VALUE, _totalEarnValue);
-        }
-    }
-
-    public class BuyResourceEvent : ResourceEvent {
-        public override string EventName => TrackingConstants.EVT_BUY_RESOURCE;
-
-        private readonly ulong _totalBoughtValue;
-
-        public BuyResourceEvent(ResourceTrackingData data, ulong value,
-            ulong remainingValue, ulong totalBoughtValue)
-            : base(data, value, remainingValue) {
-            _totalBoughtValue = totalBoughtValue;
-        }
-
-        protected override void BuildParams(Dictionary<string, object> dict) {
-            base.BuildParams(dict);
-            dict.Add(TrackingConstants.PAR_TOTAL_BOUGHT_VALUE, _totalBoughtValue);
-        }
+        public EarnResourceEvent(string resourceId, string sourceId, string sourceType, int value)
+            : base(resourceId, sourceId, sourceType, value) { }
     }
 
     public class SpendResourceEvent : ResourceEvent {
         public override string EventName => TrackingConstants.EVT_SPEND_RESOURCE;
 
-        private readonly ulong _totalSpentValue;
-
-        public SpendResourceEvent(ResourceTrackingData data, ulong value,
-            ulong remainingValue, ulong totalSpentValue)
-            : base(data, value, remainingValue) {
-            _totalSpentValue = totalSpentValue;
-        }
-
-        protected override void BuildParams(Dictionary<string, object> dict) {
-            base.BuildParams(dict);
-            dict.Add(TrackingConstants.PAR_TOTAL_SPENT_VALUE, _totalSpentValue);
-        }
+        public SpendResourceEvent(string resourceId, string sourceId, string sourceType, int value)
+            : base(resourceId, sourceId, sourceType, value) { }
     }
 
     [Serializable]
@@ -99,11 +64,14 @@ namespace ArcherStudio.SDK.Tracking.Events {
         public ResourceEventType Type;
         public string Source;
         public string SourceId;
+        public string SourceType;
 
-        public TrackingSource(ResourceEventType type, string source, string sourceId) {
+        public TrackingSource(ResourceEventType type, string source, string sourceId,
+            string sourceType = null) {
             Type = type;
             Source = source;
             SourceId = sourceId;
+            SourceType = sourceType ?? TrackingConstants.SOURCE_TYPE_FREE;
         }
 
         public static TrackingSource Null => new(ResourceEventType.Undefined, null, null);
