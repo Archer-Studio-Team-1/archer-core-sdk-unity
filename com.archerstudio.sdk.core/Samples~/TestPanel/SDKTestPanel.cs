@@ -494,9 +494,7 @@ namespace ArcherStudio.SDK.Examples {
             CreateButton(c, "IAP Revenue (Success)", OnTrackIapRevenueSuccess, CLR_TRACKING);
             CreateButton(c, "IAP Revenue (Fail)", OnTrackIapRevenueFail, CLR_TRACKING);
             CreateButton(c, "Loading Result", OnTrackLoadingResult, CLR_TRACKING);
-            CreateButton(c, "Exploration Start", OnTrackExplorationStart, CLR_TRACKING);
-            CreateButton(c, "Exploration End", OnTrackExplorationEnd, CLR_TRACKING);
-            CreateButton(c, "Exploration RankUp", OnTrackExplorationRankUp, CLR_TRACKING);
+            // Exploration events moved to game project (project-specific)
             CreateButton(c, "Forge Upgrade", OnTrackForgeUpgrade, CLR_TRACKING);
             CreateButton(c, "Character LvlUp", OnTrackCharacterLevelUp, CLR_TRACKING);
             CreateButton(c, "Spell Upgrade", OnTrackSpellUpgrade, CLR_TRACKING);
@@ -935,22 +933,6 @@ namespace ArcherStudio.SDK.Examples {
             int fps = (int)(1f / Time.deltaTime);
             SDKLogger.Info(Tag, $"Track: LoadingResultEvent (loading_time=5000, fps={fps}, status=success)");
             TrackingManager.Instance?.Track(new LoadingResultEvent(5000, fps, "success"));
-        }
-
-        private void OnTrackExplorationStart() {
-            _testCounter++;
-            SDKLogger.Info(Tag, $"Track: ExplorationStartEvent (boss_{_testCounter})");
-            TrackingManager.Instance?.Track(new ExplorationStartEvent($"boss_{_testCounter}"));
-        }
-
-        private void OnTrackExplorationEnd() {
-            SDKLogger.Info(Tag, $"Track: ExplorationEndEvent (boss_{_testCounter}, result=1)");
-            TrackingManager.Instance?.Track(new ExplorationEndEvent($"boss_{_testCounter}", 1));
-        }
-
-        private void OnTrackExplorationRankUp() {
-            SDKLogger.Info(Tag, $"Track: ExplorationRankUpEvent (boss_{_testCounter}, rank_gold)");
-            TrackingManager.Instance?.Track(new ExplorationRankUpEvent($"boss_{_testCounter}", "rank_gold"));
         }
 
         private void OnTrackForgeUpgrade() {

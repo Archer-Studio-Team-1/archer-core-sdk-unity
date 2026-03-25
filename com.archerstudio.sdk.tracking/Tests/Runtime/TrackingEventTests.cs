@@ -8,45 +8,73 @@ namespace ArcherStudio.SDK.Tracking.Tests {
     [TestFixture]
     public class TrackingEventTests {
 
-        // ─── StageStartEvent ───
+        // ─── StageStartEvent (v2) ───
 
         [Test]
         public void StageStartEvent_EventName_ReturnsStageStart() {
-            var evt = new StageStartEvent("adventure", "stage_01");
+            var evt = new StageStartEvent("1_3");
 
             Assert.AreEqual(TrackingConstants.EVT_STAGE_START, evt.EventName);
         }
 
         [Test]
-        public void StageStartEvent_ToParams_ContainsCategoryAndStageId() {
-            var evt = new StageStartEvent("adventure", "stage_01");
+        public void StageStartEvent_ToParams_ContainsOnlyStageId() {
+            var evt = new StageStartEvent("1_3");
 
             var parameters = evt.ToParams();
 
-            Assert.AreEqual("adventure", parameters[TrackingConstants.PAR_CATEGORY]);
-            Assert.AreEqual("stage_01", parameters[TrackingConstants.PAR_STAGE_ID]);
-            Assert.AreEqual(2, parameters.Count);
+            Assert.AreEqual("1_3", parameters[TrackingConstants.PAR_STAGE_ID]);
+            Assert.AreEqual(1, parameters.Count);
         }
 
-        // ─── StageEndEvent ───
+        [Test]
+        public void StageStartEvent_NullDefaults() {
+            var evt = new StageStartEvent(null);
+
+            var parameters = evt.ToParams();
+
+            Assert.AreEqual("Null", parameters[TrackingConstants.PAR_STAGE_ID]);
+        }
+
+        // ─── StageEndEvent (v2) ───
 
         [Test]
         public void StageEndEvent_EventName_ReturnsStageEnd() {
-            var evt = new StageEndEvent("adventure", "stage_01", 120);
+            var evt = new StageEndEvent(1711360000, "1_3", "Win", 120000);
 
             Assert.AreEqual(TrackingConstants.EVT_STAGE_END, evt.EventName);
         }
 
         [Test]
-        public void StageEndEvent_ToParams_ContainsCategoryStageIdAndDuration() {
-            var evt = new StageEndEvent("adventure", "stage_01", 120);
+        public void StageEndEvent_ToParams_ContainsV2Params() {
+            var evt = new StageEndEvent(1711360000, "1_3", "Win", 120000);
 
             var parameters = evt.ToParams();
 
-            Assert.AreEqual("adventure", parameters[TrackingConstants.PAR_CATEGORY]);
-            Assert.AreEqual("stage_01", parameters[TrackingConstants.PAR_STAGE_ID]);
-            Assert.AreEqual(120, parameters[TrackingConstants.PAR_DURATION]);
-            Assert.AreEqual(3, parameters.Count);
+            Assert.AreEqual(1711360000, parameters[TrackingConstants.PAR_STAGE_START_TIMESTAMP]);
+            Assert.AreEqual("1_3", parameters[TrackingConstants.PAR_STAGE_ID]);
+            Assert.AreEqual("Win", parameters[TrackingConstants.PAR_RESULT]);
+            Assert.AreEqual(120000, parameters[TrackingConstants.PAR_DURATION]);
+            Assert.AreEqual(4, parameters.Count);
+        }
+
+        [Test]
+        public void StageEndEvent_Exit_Result() {
+            var evt = new StageEndEvent(1711360000, "2_1", "Exit", 5000);
+
+            var parameters = evt.ToParams();
+
+            Assert.AreEqual("Exit", parameters[TrackingConstants.PAR_RESULT]);
+        }
+
+        [Test]
+        public void StageEndEvent_NullDefaults() {
+            var evt = new StageEndEvent(0, null, null, 0);
+
+            var parameters = evt.ToParams();
+
+            Assert.AreEqual("Null", parameters[TrackingConstants.PAR_STAGE_ID]);
+            Assert.AreEqual("Null", parameters[TrackingConstants.PAR_RESULT]);
         }
 
         // ─── IapRevenueEvent (v2) ───
@@ -337,18 +365,18 @@ namespace ArcherStudio.SDK.Tracking.Tests {
 
         [Test]
         public void ToParams_ReturnsNewDictEachCall() {
-            var evt = new StageStartEvent("adventure", "stage_01");
+            var evt = new StageStartEvent("stage_01");
 
             var first = evt.ToParams();
             var second = evt.ToParams();
 
             Assert.AreNotSame(first, second);
-            Assert.AreEqual(first[TrackingConstants.PAR_CATEGORY], second[TrackingConstants.PAR_CATEGORY]);
+            Assert.AreEqual(first[TrackingConstants.PAR_STAGE_ID], second[TrackingConstants.PAR_STAGE_ID]);
         }
 
         [Test]
         public void FillParams_PopulatesExistingDict() {
-            var evt = new StageStartEvent("adventure", "stage_01");
+            var evt = new StageStartEvent("stage_01");
             var dict = new Dictionary<string, object> {
                 { "existing_key", "existing_value" }
             };
@@ -356,14 +384,13 @@ namespace ArcherStudio.SDK.Tracking.Tests {
             evt.FillParams(dict);
 
             Assert.AreEqual("existing_value", dict["existing_key"]);
-            Assert.AreEqual("adventure", dict[TrackingConstants.PAR_CATEGORY]);
             Assert.AreEqual("stage_01", dict[TrackingConstants.PAR_STAGE_ID]);
-            Assert.AreEqual(3, dict.Count);
+            Assert.AreEqual(2, dict.Count);
         }
 
         [Test]
         public void FillParams_DoesNotClearExistingEntries() {
-            var evt = new StageStartEvent("adventure", "stage_01");
+            var evt = new StageStartEvent("stage_01");
             var dict = new Dictionary<string, object> {
                 { "pre_existing", 999 }
             };

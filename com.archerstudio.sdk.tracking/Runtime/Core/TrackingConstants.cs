@@ -18,9 +18,7 @@ namespace ArcherStudio.SDK.Tracking {
         public const string EVT_BUTTON_CLICK = "button_click";
         public const string EVT_EARN_RESOURCE = "earn_resource";
         public const string EVT_SPEND_RESOURCE = "spend_resource";
-        public const string EVT_EXPLORATION_START = "exploration_start";
         public const string EVT_EXPLORATION_END = "exploration_end";
-        public const string EVT_EXPLORATION_RANK_UP = "exploration_rank_up";
         public const string EVT_TASK_END = "task_end";
         public const string EVT_LOADING_RESULT = "loading_result";
         public const string EVT_IAP_REVENUE = "iap_revenue";
@@ -43,6 +41,7 @@ namespace ArcherStudio.SDK.Tracking {
 
         public const string PAR_CATEGORY = "category";
         public const string PAR_STAGE_ID = "stage_id";
+        public const string PAR_STAGE_START_TIMESTAMP = "stage_start_timestamp";
         public const string PAR_DURATION = "duration";
 
         public const string PAR_TASK_ID = "task_id";
@@ -70,12 +69,15 @@ namespace ArcherStudio.SDK.Tracking {
         public const string PAR_FORGE_LEVEL = "forge_level";
         public const string PAR_LEVEL_ID = "level_id";
 
+        public const string PAR_NUMBER_TICKETS = "number_tickets";
         public const string PAR_BOSS_LEVEL = "boss_level";
+        public const string PAR_BOSS_POWER = "boss_power";
+        public const string PAR_RESULT = "result";
         public const string PAR_PLAY_INDEX = "play_index";
         public const string PAR_LOSE_INDEX = "lose_index";
-        public const string PAR_RESULT = "result";
-        public const string PAR_LOSE_BY = "lose_by";
-        public const string PAR_RANK_LEVEL = "rank_level";
+        public const string PAR_PLAYER_POWER = "player_power";
+        public const string PAR_NUMBER_ITEMS = "number_items";
+        public const string PAR_PLAYER_RANK = "player_rank";
 
         public const string PAR_LOADING_TIME = "loading_time";
         public const string PAR_FPS = "fps";
