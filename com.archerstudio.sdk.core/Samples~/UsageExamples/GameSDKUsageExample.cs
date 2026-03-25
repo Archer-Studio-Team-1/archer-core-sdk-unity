@@ -200,9 +200,9 @@ namespace ArcherStudio.SDK.Examples {
         /// Track khi player mua IAP (thành công hoặc thất bại).
         /// </summary>
         public void TrackIapRevenue(string productId, int revenueMicro,
-            string purchaseStatus, string failReason = null, string placement = null) {
+            string purchaseStatus, string failReason = null, string resultCode = null, string placement = null) {
             TrackingManager.Instance.Track(
-                new IapRevenueEvent(productId, revenueMicro, purchaseStatus, failReason, placement));
+                new IapRevenueEvent(productId, revenueMicro, purchaseStatus, failReason, resultCode, placement));
         }
 
         // ─── Button Click ───
@@ -669,7 +669,7 @@ namespace ArcherStudio.SDK.Examples {
             // Track iap_revenue (v2)
             int revenueMicro = (int)(revenueUsd * 1_000_000);
             TrackingManager.Instance.Track(
-                new IapRevenueEvent(productId, revenueMicro, "success", null, "click"));
+                new IapRevenueEvent(productId, revenueMicro, "success", null, null, "click"));
 
             // Track resource bought
             _totalGems += (double)gemAmount;
@@ -690,7 +690,7 @@ namespace ArcherStudio.SDK.Examples {
 
         public void OnPurchaseFailed(string productId, string errorMessage) {
             TrackingManager.Instance.Track(
-                new IapRevenueEvent(productId, 0, "fail", errorMessage, "click"));
+                new IapRevenueEvent(productId, 0, "fail", errorMessage, "USER_CANCELED", "click"));
         }
 
         // ─── Game Flow: App Resume → App Open Ad ───

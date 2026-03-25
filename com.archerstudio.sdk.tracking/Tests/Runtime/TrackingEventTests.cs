@@ -60,7 +60,7 @@ namespace ArcherStudio.SDK.Tracking.Tests {
 
         [Test]
         public void IapRevenueEvent_ToParams_ContainsAllParams() {
-            var evt = new IapRevenueEvent("gem_pack_01", 990000, "success", null, "click");
+            var evt = new IapRevenueEvent("gem_pack_01", 990000, "success", null, null, "click");
 
             var parameters = evt.ToParams();
 
@@ -68,18 +68,21 @@ namespace ArcherStudio.SDK.Tracking.Tests {
             Assert.AreEqual(990000, parameters[TrackingConstants.PAR_IAP_REVENUE_MICRO]);
             Assert.AreEqual("success", parameters[TrackingConstants.PAR_PURCHASE_STATUS]);
             Assert.AreEqual("Null", parameters[TrackingConstants.PAR_FAIL_REASON]);
+            Assert.AreEqual("Null", parameters[TrackingConstants.PAR_RESULT_CODE]);
             Assert.AreEqual("click", parameters[TrackingConstants.PAR_PLACEMENT]);
-            Assert.AreEqual(5, parameters.Count);
+            Assert.AreEqual(6, parameters.Count);
         }
 
         [Test]
-        public void IapRevenueEvent_Failed_ContainsFailReason() {
-            var evt = new IapRevenueEvent("gem_pack_01", 0, "fail", "USER_CANCELED", "popup");
+        public void IapRevenueEvent_Failed_ContainsFailReasonAndResultCode() {
+            var evt = new IapRevenueEvent("gem_pack_01", 0, "fail",
+                "User cancelled the purchase", "USER_CANCELED", "popup");
 
             var parameters = evt.ToParams();
 
             Assert.AreEqual("fail", parameters[TrackingConstants.PAR_PURCHASE_STATUS]);
-            Assert.AreEqual("USER_CANCELED", parameters[TrackingConstants.PAR_FAIL_REASON]);
+            Assert.AreEqual("User cancelled the purchase", parameters[TrackingConstants.PAR_FAIL_REASON]);
+            Assert.AreEqual("USER_CANCELED", parameters[TrackingConstants.PAR_RESULT_CODE]);
             Assert.AreEqual(0, parameters[TrackingConstants.PAR_IAP_REVENUE_MICRO]);
         }
 

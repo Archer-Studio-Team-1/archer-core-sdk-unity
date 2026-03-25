@@ -923,13 +923,13 @@ namespace ArcherStudio.SDK.Examples {
             int revenueMicro = (int)(0.99 * 1_000_000);
             SDKLogger.Info(Tag, $"Track: IapRevenueEvent ({_purchaseItemId}, success, micro={revenueMicro})");
             TrackingManager.Instance?.Track(new IapRevenueEvent(
-                _purchaseItemId, revenueMicro, "success", null, _purchaseItemTrigger));
+                _purchaseItemId, revenueMicro, "success", null, null, _purchaseItemTrigger));
         }
 
         private void OnTrackIapRevenueFail() {
             SDKLogger.Info(Tag, $"Track: IapRevenueEvent ({_purchaseItemId}, fail)");
             TrackingManager.Instance?.Track(new IapRevenueEvent(
-                _purchaseItemId, 0, "fail", "USER_CANCELED", _purchaseItemTrigger));
+                _purchaseItemId, 0, "fail", "User cancelled the purchase", "USER_CANCELED", _purchaseItemTrigger));
         }
 
         private void OnTrackLoadingStart() {

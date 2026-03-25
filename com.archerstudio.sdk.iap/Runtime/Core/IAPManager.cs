@@ -137,10 +137,11 @@ namespace ArcherStudio.SDK.IAP {
                 double revenue = productInfo.HasValue ? (double)productInfo.Value.PriceDecimal : 0;
                 int revenueMicro = (int)(revenue * 1_000_000);
                 string status = result.Success ? "success" : "fail";
-                string failReason = result.Success ? null : MapToBillingResponseCode(result.FailureReason);
+                string failReason = result.Success ? null : result.ErrorMessage;
+                string resultCode = result.Success ? null : MapToBillingResponseCode(result.FailureReason);
 
                 trackingManager?.Track(new IapRevenueEvent(
-                    productId, revenueMicro, status, failReason, reason));
+                    productId, revenueMicro, status, failReason, resultCode, reason));
 
                 if (result.Success) {
                     SDKLogger.Info(Tag, $"Purchase succeeded: {productId}");

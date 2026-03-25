@@ -83,6 +83,7 @@ namespace ArcherStudio.SDK.Tracking {
         public const string PAR_IAP_REVENUE_MICRO = "iap_revenue_micro";
         public const string PAR_PURCHASE_STATUS = "purchase_status";
         public const string PAR_FAIL_REASON = "fail_reason";
+        public const string PAR_RESULT_CODE = "result_code";
         public const string PAR_STATUS = "status"; // used by LoadingEvents (will be migrated later)
 
         // ─── Resource Sources ───
