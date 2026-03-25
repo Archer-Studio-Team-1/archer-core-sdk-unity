@@ -143,7 +143,6 @@ namespace ArcherStudio.SDK.IAP {
 
                     // Update user profile
                     trackingManager?.UpdateUserProfile(p => {
-                        if (!p.IsIapUser) p.IsIapUser = true;
                         p.IapCount = p.IapCount + 1;
                     });
 

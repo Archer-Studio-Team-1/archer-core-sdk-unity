@@ -27,7 +27,6 @@ namespace ArcherStudio.SDK.Ads {
 
                 // Update IAA status on user profile
                 trackingManager.UpdateUserProfile(p => {
-                    if (!p.IsIaaUser) p.IsIaaUser = true;
                     p.IaaCount = p.IaaCount + 1;
                 });
             }

@@ -9,46 +9,54 @@ namespace ArcherStudio.SDK.Tracking {
 
     [Serializable]
     public class UserProfile {
-        public Dictionary<string, ulong> TotalEarned = new Dictionary<string, ulong>();
-        public Dictionary<string, ulong> TotalBought = new Dictionary<string, ulong>();
-        public Dictionary<string, ulong> TotalSpent = new Dictionary<string, ulong>();
+        public Dictionary<string, double> TotalEarned = new Dictionary<string, double>();
+        public Dictionary<string, double> TotalBought = new Dictionary<string, double>();
+        public Dictionary<string, double> TotalSpent = new Dictionary<string, double>();
 
         public event Action<string, string> OnPropertyChanged;
 
         private void Notify(string key, string value) => OnPropertyChanged?.Invoke(key, value);
 
-        // ─── Backing fields ───
-        private string _userId = "";
-        private string _adId = "";
+        // ─── Backing fields (v2) ───
+        private string _adjustId = "";
+        private string _deviceId = "";
+        private string _firebaseStorageId = "";
+        private string _currentTask = "";
         private string _currentStage = "";
         private int _progressStage;
         private int _exploreStage;
-        private int _currentLevel;
+        private string _currentExploreTicket = "";
+        private float _currentForgeShopLevel;
+        private string _currentExploreBossLevel = "";
+        private double _currentGem;
+        private int _level;
         private int _daySinceInstall;
-        private bool _isIapUser;
         private int _iapCount;
-        private bool _isIaaUser;
         private int _iaaCount;
-        private int _activeDayN;
-        private ulong _remainingGem;
-        private string _uaNetwork = "";
-        private string _uaCampaign = "";
-        private string _uaAdGroup = "";
-        private string _uaCreative = "";
         private string _storeName = "";
         private string _storeAppId = "";
         private long _installTimestamp;
 
-        // ─── Properties with change notification ───
+        // ─── Properties with change notification (v2) ───
 
-        public string UserId {
-            get => _userId;
-            set { if (_userId != value) { _userId = value; Notify(TrackingConstants.UP_USER_ID, value); } }
+        public string AdjustId {
+            get => _adjustId;
+            set { if (_adjustId != value) { _adjustId = value; Notify(TrackingConstants.UP_ADJUST_ID, value); } }
         }
 
-        public string AdId {
-            get => _adId;
-            set { if (_adId != value) { _adId = value; Notify(TrackingConstants.UP_AD_ID, value); } }
+        public string DeviceId {
+            get => _deviceId;
+            set { if (_deviceId != value) { _deviceId = value; Notify(TrackingConstants.UP_DEVICE_ID, value); } }
+        }
+
+        public string FirebaseStorageId {
+            get => _firebaseStorageId;
+            set { if (_firebaseStorageId != value) { _firebaseStorageId = value; Notify(TrackingConstants.UP_FIREBASE_STORAGE_ID, value); } }
+        }
+
+        public string CurrentTask {
+            get => _currentTask;
+            set { if (_currentTask != value) { _currentTask = value; Notify(TrackingConstants.UP_CURRENT_TASK, value); } }
         }
 
         public string CurrentStage {
@@ -66,16 +74,29 @@ namespace ArcherStudio.SDK.Tracking {
             set { if (_exploreStage != value) { _exploreStage = value; Notify(TrackingConstants.UP_EXPLORE_STAGE, value.ToString()); } }
         }
 
-        public int CurrentLevel {
-            get => _currentLevel;
-            set {
-                if (_currentLevel != value) {
-                    _currentLevel = value;
-                    string s = value.ToString();
-                    Notify(TrackingConstants.UP_CURRENT_LEVEL, s);
-                    Notify(TrackingConstants.UP_LEVEL, s);
-                }
-            }
+        public string CurrentExploreTicket {
+            get => _currentExploreTicket;
+            set { if (_currentExploreTicket != value) { _currentExploreTicket = value; Notify(TrackingConstants.UP_CURRENT_EXPLORE_TICKET, value); } }
+        }
+
+        public float CurrentForgeShopLevel {
+            get => _currentForgeShopLevel;
+            set { if (Math.Abs(_currentForgeShopLevel - value) > 0.001f) { _currentForgeShopLevel = value; Notify(TrackingConstants.UP_CURRENT_FORGE_SHOP_LEVEL, value.ToString("F0")); } }
+        }
+
+        public string CurrentExploreBossLevel {
+            get => _currentExploreBossLevel;
+            set { if (_currentExploreBossLevel != value) { _currentExploreBossLevel = value; Notify(TrackingConstants.UP_CURRENT_EXPLORE_BOSS_LEVEL, value); } }
+        }
+
+        public double CurrentGem {
+            get => _currentGem;
+            set { if (Math.Abs(_currentGem - value) > 0.001f) { _currentGem = value; Notify(TrackingConstants.UP_CURRENT_GEM, value.ToString("F0")); } }
+        }
+
+        public int Level {
+            get => _level;
+            set { if (_level != value) { _level = value; Notify(TrackingConstants.UP_LEVEL, value.ToString()); } }
         }
 
         public int DaySinceInstall {
@@ -83,54 +104,14 @@ namespace ArcherStudio.SDK.Tracking {
             set { if (_daySinceInstall != value) { _daySinceInstall = value; Notify(TrackingConstants.UP_DAY_SINCE_INSTALL, value.ToString()); } }
         }
 
-        public bool IsIapUser {
-            get => _isIapUser;
-            set { if (_isIapUser != value) { _isIapUser = value; Notify(TrackingConstants.UP_IS_IAP_USER, value ? "1" : "0"); } }
-        }
-
         public int IapCount {
             get => _iapCount;
             set { if (_iapCount != value) { _iapCount = value; Notify(TrackingConstants.UP_IAP_COUNT, value.ToString()); } }
         }
 
-        public bool IsIaaUser {
-            get => _isIaaUser;
-            set { if (_isIaaUser != value) { _isIaaUser = value; Notify(TrackingConstants.UP_IS_IAA_USER, value ? "1" : "0"); } }
-        }
-
         public int IaaCount {
             get => _iaaCount;
             set { if (_iaaCount != value) { _iaaCount = value; Notify(TrackingConstants.UP_IAA_COUNT, value.ToString()); } }
-        }
-
-        public int ActiveDayN {
-            get => _activeDayN;
-            set { if (_activeDayN != value) { _activeDayN = value; Notify(TrackingConstants.UP_ACTIVE_DAY_N, value.ToString()); } }
-        }
-
-        public ulong RemainingGem {
-            get => _remainingGem;
-            set { if (_remainingGem != value) { _remainingGem = value; Notify(TrackingConstants.UP_REMAINING_GEM, value.ToString()); } }
-        }
-
-        public string UaNetwork {
-            get => _uaNetwork;
-            set { if (_uaNetwork != value) { _uaNetwork = value; Notify(TrackingConstants.UP_UA_NETWORK, value); } }
-        }
-
-        public string UaCampaign {
-            get => _uaCampaign;
-            set { if (_uaCampaign != value) { _uaCampaign = value; Notify(TrackingConstants.UP_UA_CAMPAIGN, value); } }
-        }
-
-        public string UaAdGroup {
-            get => _uaAdGroup;
-            set { if (_uaAdGroup != value) { _uaAdGroup = value; Notify(TrackingConstants.UP_UA_ADGROUP, value); } }
-        }
-
-        public string UaCreative {
-            get => _uaCreative;
-            set { if (_uaCreative != value) { _uaCreative = value; Notify(TrackingConstants.UP_UA_CREATIVE, value); } }
         }
 
         public string StoreName {
@@ -150,65 +131,60 @@ namespace ArcherStudio.SDK.Tracking {
 
         // ─── Resource Helpers ───
 
-        public ulong AddEarned(string resourceId, ulong amount) {
+        public double AddEarned(string resourceId, double amount) {
             if (!TotalEarned.ContainsKey(resourceId)) TotalEarned[resourceId] = 0;
             TotalEarned[resourceId] += amount;
             return TotalEarned[resourceId];
         }
 
-        public ulong AddBought(string resourceId, ulong amount) {
+        public double AddBought(string resourceId, double amount) {
             if (!TotalBought.ContainsKey(resourceId)) TotalBought[resourceId] = 0;
             TotalBought[resourceId] += amount;
             return TotalBought[resourceId];
         }
 
-        public ulong AddSpent(string resourceId, ulong amount) {
+        public double AddSpent(string resourceId, double amount) {
             if (!TotalSpent.ContainsKey(resourceId)) TotalSpent[resourceId] = 0;
             TotalSpent[resourceId] += amount;
             return TotalSpent[resourceId];
         }
 
-        public ulong GetTotalEarned(string resourceId) =>
+        public double GetTotalEarned(string resourceId) =>
             TotalEarned.TryGetValue(resourceId, out var v) ? v : 0;
 
-        public ulong GetTotalBought(string resourceId) =>
+        public double GetTotalBought(string resourceId) =>
             TotalBought.TryGetValue(resourceId, out var v) ? v : 0;
 
-        public ulong GetTotalSpent(string resourceId) =>
+        public double GetTotalSpent(string resourceId) =>
             TotalSpent.TryGetValue(resourceId, out var v) ? v : 0;
 
         // ─── Property Access ───
 
         public bool SetProperty(string key, string value) {
             switch (key) {
-                case TrackingConstants.UP_USER_ID: UserId = value; return true;
-                case TrackingConstants.UP_AD_ID: AdId = value; return true;
+                case TrackingConstants.UP_ADJUST_ID: AdjustId = value; return true;
+                case TrackingConstants.UP_DEVICE_ID: DeviceId = value; return true;
+                case TrackingConstants.UP_FIREBASE_STORAGE_ID: FirebaseStorageId = value; return true;
+                case TrackingConstants.UP_CURRENT_TASK: CurrentTask = value; return true;
                 case TrackingConstants.UP_CURRENT_STAGE: CurrentStage = value; return true;
                 case TrackingConstants.UP_PROGRESS_STAGE:
                     if (int.TryParse(value, out int progress)) { ProgressStage = progress; return true; } break;
                 case TrackingConstants.UP_EXPLORE_STAGE:
                     if (int.TryParse(value, out int explore)) { ExploreStage = explore; return true; } break;
-                case TrackingConstants.UP_CURRENT_LEVEL:
+                case TrackingConstants.UP_CURRENT_EXPLORE_TICKET: CurrentExploreTicket = value; return true;
+                case TrackingConstants.UP_CURRENT_FORGE_SHOP_LEVEL:
+                    if (float.TryParse(value, out float forgeLevel)) { CurrentForgeShopLevel = forgeLevel; return true; } break;
+                case TrackingConstants.UP_CURRENT_EXPLORE_BOSS_LEVEL: CurrentExploreBossLevel = value; return true;
+                case TrackingConstants.UP_CURRENT_GEM:
+                    if (float.TryParse(value, out float gem)) { CurrentGem = gem; return true; } break;
                 case TrackingConstants.UP_LEVEL:
-                    if (int.TryParse(value, out int level)) { CurrentLevel = level; return true; } break;
+                    if (int.TryParse(value, out int level)) { Level = level; return true; } break;
                 case TrackingConstants.UP_DAY_SINCE_INSTALL:
                     if (int.TryParse(value, out int days)) { DaySinceInstall = days; return true; } break;
-                case TrackingConstants.UP_IS_IAP_USER:
-                    IsIapUser = value == "1" || value.Equals("true", StringComparison.OrdinalIgnoreCase); return true;
                 case TrackingConstants.UP_IAP_COUNT:
                     if (int.TryParse(value, out int iapC)) { IapCount = iapC; return true; } break;
-                case TrackingConstants.UP_IS_IAA_USER:
-                    IsIaaUser = value == "1" || value.Equals("true", StringComparison.OrdinalIgnoreCase); return true;
                 case TrackingConstants.UP_IAA_COUNT:
                     if (int.TryParse(value, out int iaaC)) { IaaCount = iaaC; return true; } break;
-                case TrackingConstants.UP_ACTIVE_DAY_N:
-                    if (int.TryParse(value, out int activeDay)) { ActiveDayN = activeDay; return true; } break;
-                case TrackingConstants.UP_REMAINING_GEM:
-                    if (ulong.TryParse(value, out ulong gems)) { RemainingGem = gems; return true; } break;
-                case TrackingConstants.UP_UA_NETWORK: UaNetwork = value; return true;
-                case TrackingConstants.UP_UA_CAMPAIGN: UaCampaign = value; return true;
-                case TrackingConstants.UP_UA_ADGROUP: UaAdGroup = value; return true;
-                case TrackingConstants.UP_UA_CREATIVE: UaCreative = value; return true;
                 case TrackingConstants.UP_STORE_NAME: StoreName = value; return true;
                 case TrackingConstants.UP_STORE_APP_ID: StoreAppId = value; return true;
             }
@@ -218,25 +194,23 @@ namespace ArcherStudio.SDK.Tracking {
         public Dictionary<string, string> GetAllProperties() {
             var dict = new Dictionary<string, string>();
 
-            if (!string.IsNullOrEmpty(UserId)) dict[TrackingConstants.UP_USER_ID] = UserId;
-            if (!string.IsNullOrEmpty(AdId)) dict[TrackingConstants.UP_AD_ID] = AdId;
-            if (!string.IsNullOrEmpty(CurrentStage)) dict[TrackingConstants.UP_CURRENT_STAGE] = CurrentStage;
+            string NullIfEmpty(string s) => string.IsNullOrEmpty(s) ? "Null" : s;
+
+            dict[TrackingConstants.UP_ADJUST_ID] = NullIfEmpty(AdjustId);
+            dict[TrackingConstants.UP_DEVICE_ID] = NullIfEmpty(DeviceId);
+            dict[TrackingConstants.UP_FIREBASE_STORAGE_ID] = NullIfEmpty(FirebaseStorageId);
+            dict[TrackingConstants.UP_CURRENT_TASK] = NullIfEmpty(CurrentTask);
+            dict[TrackingConstants.UP_CURRENT_STAGE] = NullIfEmpty(CurrentStage);
             dict[TrackingConstants.UP_PROGRESS_STAGE] = ProgressStage.ToString();
             dict[TrackingConstants.UP_EXPLORE_STAGE] = ExploreStage.ToString();
-            string levelStr = CurrentLevel.ToString();
-            dict[TrackingConstants.UP_CURRENT_LEVEL] = levelStr;
-            dict[TrackingConstants.UP_LEVEL] = levelStr;
+            dict[TrackingConstants.UP_CURRENT_EXPLORE_TICKET] = NullIfEmpty(CurrentExploreTicket);
+            dict[TrackingConstants.UP_CURRENT_FORGE_SHOP_LEVEL] = CurrentForgeShopLevel > 0 ? CurrentForgeShopLevel.ToString("F0") : "0";
+            dict[TrackingConstants.UP_CURRENT_EXPLORE_BOSS_LEVEL] = NullIfEmpty(CurrentExploreBossLevel);
+            dict[TrackingConstants.UP_CURRENT_GEM] = CurrentGem.ToString("F0");
+            dict[TrackingConstants.UP_LEVEL] = Level.ToString();
             dict[TrackingConstants.UP_DAY_SINCE_INSTALL] = DaySinceInstall.ToString();
-            dict[TrackingConstants.UP_IS_IAP_USER] = IsIapUser ? "1" : "0";
             dict[TrackingConstants.UP_IAP_COUNT] = IapCount.ToString();
-            dict[TrackingConstants.UP_IS_IAA_USER] = IsIaaUser ? "1" : "0";
             dict[TrackingConstants.UP_IAA_COUNT] = IaaCount.ToString();
-            dict[TrackingConstants.UP_ACTIVE_DAY_N] = ActiveDayN.ToString();
-            dict[TrackingConstants.UP_REMAINING_GEM] = RemainingGem.ToString();
-            if (!string.IsNullOrEmpty(UaNetwork)) dict[TrackingConstants.UP_UA_NETWORK] = UaNetwork;
-            if (!string.IsNullOrEmpty(UaCampaign)) dict[TrackingConstants.UP_UA_CAMPAIGN] = UaCampaign;
-            if (!string.IsNullOrEmpty(UaAdGroup)) dict[TrackingConstants.UP_UA_ADGROUP] = UaAdGroup;
-            if (!string.IsNullOrEmpty(UaCreative)) dict[TrackingConstants.UP_UA_CREATIVE] = UaCreative;
             if (!string.IsNullOrEmpty(StoreName)) dict[TrackingConstants.UP_STORE_NAME] = StoreName;
             if (!string.IsNullOrEmpty(StoreAppId)) dict[TrackingConstants.UP_STORE_APP_ID] = StoreAppId;
 
@@ -288,12 +262,12 @@ namespace ArcherStudio.SDK.Tracking {
 
                 string content = File.ReadAllText(filePath);
                 var profile = JsonConvert.DeserializeObject<UserProfile>(content) ?? new UserProfile();
-                profile.TotalEarned ??= new Dictionary<string, ulong>();
-                profile.TotalBought ??= new Dictionary<string, ulong>();
-                profile.TotalSpent ??= new Dictionary<string, ulong>();
+                profile.TotalEarned ??= new Dictionary<string, double>();
+                profile.TotalBought ??= new Dictionary<string, double>();
+                profile.TotalSpent ??= new Dictionary<string, double>();
 
-                if (string.IsNullOrEmpty(profile.UserId)) {
-                    profile.UserId = SystemInfo.deviceUniqueIdentifier;
+                if (string.IsNullOrEmpty(profile.DeviceId)) {
+                    profile.DeviceId = SystemInfo.deviceUniqueIdentifier;
                 }
 
                 return profile;

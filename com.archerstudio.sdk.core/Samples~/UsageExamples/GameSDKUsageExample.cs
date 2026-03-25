@@ -154,7 +154,7 @@ namespace ArcherStudio.SDK.Examples {
         /// </summary>
         public void TrackEarnResource(
             string itemId, string source, string sourceId,
-            ulong amount, ulong remaining, ulong totalEarned) {
+            double amount, double remaining, double totalEarned) {
 
             var data = new ResourceTrackingData(
                 ResourceCategory.Currency, itemId,
@@ -169,7 +169,7 @@ namespace ArcherStudio.SDK.Examples {
         /// </summary>
         public void TrackSpendResource(
             string itemId, string source, string sourceId,
-            ulong amount, ulong remaining, ulong totalSpent) {
+            double amount, double remaining, double totalSpent) {
 
             var data = new ResourceTrackingData(
                 ResourceCategory.Currency, itemId,
@@ -184,7 +184,7 @@ namespace ArcherStudio.SDK.Examples {
         /// </summary>
         public void TrackBuyResource(
             string itemId, string source, string sourceId,
-            ulong amount, ulong remaining, ulong totalBought) {
+            double amount, double remaining, double totalBought) {
 
             var data = new ResourceTrackingData(
                 ResourceCategory.Currency, itemId,
@@ -260,8 +260,8 @@ namespace ArcherStudio.SDK.Examples {
         /// </summary>
         public void SetupUserProfile(int currentLevel, bool isPayer) {
             TrackingManager.Instance.UpdateUserProfile(p => {
-                p.CurrentLevel = currentLevel;
-                p.IsIapUser = isPayer;
+                p.CurrentForgeShopLevel = currentLevel;
+                p.IapCount = isPayer ? 1 : 0;
             });
         }
 
@@ -270,7 +270,7 @@ namespace ArcherStudio.SDK.Examples {
         /// </summary>
         public void OnPlayerLevelUp(int newLevel, string stageId) {
             TrackingManager.Instance.UpdateUserProfile(p => {
-                p.CurrentLevel = newLevel;
+                p.CurrentForgeShopLevel = newLevel;
                 p.CurrentStage = stageId;
                 p.ProgressStage = newLevel;
             });
@@ -281,7 +281,6 @@ namespace ArcherStudio.SDK.Examples {
         /// </summary>
         public void OnFirstPurchase() {
             TrackingManager.Instance.UpdateUserProfile(p => {
-                p.IsIapUser = true;
                 p.IapCount = p.IapCount + 1;
             });
         }
@@ -291,7 +290,6 @@ namespace ArcherStudio.SDK.Examples {
         /// </summary>
         public void OnRewardedAdWatched() {
             TrackingManager.Instance.UpdateUserProfile(p => {
-                p.IsIaaUser = true;
                 p.IaaCount = p.IaaCount + 1;
             });
         }
@@ -301,7 +299,7 @@ namespace ArcherStudio.SDK.Examples {
         /// </summary>
         public void TrackResourceChange(string resourceId, ulong earnAmount) {
             var profile = TrackingManager.Instance.CurrentUserProfile;
-            ulong totalEarned = profile.AddEarned(resourceId, earnAmount);
+            double totalEarned = profile.AddEarned(resourceId, earnAmount);
             SDKLogger.Info("Game", $"{resourceId}: total earned = {totalEarned}");
         }
 
@@ -534,9 +532,9 @@ namespace ArcherStudio.SDK.Examples {
 
         private float _levelStartTime;
         private int _currentLevel = 1;
-        private ulong _totalGems;
-        private ulong _totalGemsEarned;
-        private ulong _totalGemsSpent;
+        private double _totalGems;
+        private double _totalGemsEarned;
+        private double _totalGemsSpent;
 
         private void OnEnable() {
             SDKEventBus.Subscribe<SDKReadyEvent>(OnSDKReady);
@@ -553,7 +551,7 @@ namespace ArcherStudio.SDK.Examples {
 
             // Setup user profile
             TrackingManager.Instance.UpdateUserProfile(p => {
-                p.CurrentLevel = _currentLevel;
+                p.CurrentForgeShopLevel = _currentLevel;
             });
 
             // Show banner
@@ -577,7 +575,7 @@ namespace ArcherStudio.SDK.Examples {
 
             // Update profile
             TrackingManager.Instance.UpdateUserProfile(p => {
-                p.CurrentLevel = levelNumber;
+                p.CurrentForgeShopLevel = levelNumber;
                 p.CurrentStage = $"level_{levelNumber}";
             });
 
@@ -595,14 +593,14 @@ namespace ArcherStudio.SDK.Examples {
                 new StageEndEvent("campaign", $"level_{_currentLevel}", durationMs));
 
             // Track gems earned
-            _totalGems += (ulong)gemsEarned;
-            _totalGemsEarned += (ulong)gemsEarned;
+            _totalGems += (double)gemsEarned;
+            _totalGemsEarned += (double)gemsEarned;
             TrackEarnGems(gemsEarned);
 
             // Update profile
             TrackingManager.Instance.UpdateUserProfile(p => {
                 p.ProgressStage = _currentLevel;
-                p.RemainingGem = _totalGems;
+                p.CurrentGem = _totalGems;
             });
 
             // Show banner again
@@ -638,9 +636,8 @@ namespace ArcherStudio.SDK.Examples {
                 if (result.Success && result.WasRewarded) {
                     GrantReward(baseReward * 2);
 
-                    // Update IAA status
+                    // Update IAA count
                     TrackingManager.Instance.UpdateUserProfile(p => {
-                        p.IsIaaUser = true;
                         p.IaaCount = p.IaaCount + 1;
                     });
                 } else {
@@ -688,20 +685,19 @@ namespace ArcherStudio.SDK.Examples {
                 new PurchaseResultEvent(productId, "shop", "tap_buy", 1));
 
             // Track resource bought
-            _totalGems += (ulong)gemAmount;
+            _totalGems += (double)gemAmount;
             var data = new ResourceTrackingData(
                 ResourceCategory.Currency, "gem",
                 new TrackingSource(ResourceEventType.Buy, "iap", productId));
-            ulong totalBought = TrackingManager.Instance.CurrentUserProfile
-                .AddBought("gem", (ulong)gemAmount);
+            double totalBought = TrackingManager.Instance.CurrentUserProfile
+                .AddBought("gem", (double)gemAmount);
             TrackingManager.Instance.Track(
-                new BuyResourceEvent(data, (ulong)gemAmount, _totalGems, totalBought));
+                new BuyResourceEvent(data, (double)gemAmount, _totalGems, totalBought));
 
             // Update profile
             TrackingManager.Instance.UpdateUserProfile(p => {
-                p.IsIapUser = true;
                 p.IapCount = p.IapCount + 1;
-                p.RemainingGem = _totalGems;
+                p.CurrentGem = _totalGems;
             });
         }
 
@@ -762,12 +758,12 @@ namespace ArcherStudio.SDK.Examples {
 
             TrackingManager.Instance.Track(
                 new EarnResourceEvent(
-                    data, (ulong)amount, _totalGems, _totalGemsEarned));
+                    data, (double)amount, _totalGems, _totalGemsEarned));
         }
 
         private void GrantReward(int gems) {
-            _totalGems += (ulong)gems;
-            _totalGemsEarned += (ulong)gems;
+            _totalGems += (double)gems;
+            _totalGemsEarned += (double)gems;
             TrackEarnGems(gems);
             SDKLogger.Info("Game", $"Granted {gems} gems. Total: {_totalGems}");
         }

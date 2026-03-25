@@ -207,7 +207,7 @@ namespace ArcherStudio.SDK.Tracking {
             }
 
             Adjust.GetAdid(id => {
-                TrackingManager.Instance?.UpdateUserProfile(p => { p.AdId = id; });
+                TrackingManager.Instance?.UpdateUserProfile(p => { p.AdjustId = id ?? "Null"; });
                 SDKLogger.Info("Adjust", $"  ADID: {id ?? "(null)"}");
             });
 
@@ -259,12 +259,6 @@ namespace ArcherStudio.SDK.Tracking {
                 $"campaign={attribution.Campaign}, " +
                 $"adgroup={attribution.Adgroup}, " +
                 $"creative={attribution.Creative}");
-            TrackingManager.Instance?.UpdateUserProfile(p => {
-                p.UaNetwork = attribution.Network;
-                p.UaCampaign = attribution.Campaign;
-                p.UaAdGroup = attribution.Adgroup;
-                p.UaCreative = attribution.Creative;
-            });
         }
 
         #endif
@@ -957,11 +951,9 @@ namespace ArcherStudio.SDK.Tracking {
             // Map user properties as global partner parameters for campaign segmenting
             #if HAS_ADJUST_SDK
             if (!string.IsNullOrEmpty(key)) {
-                // Standardize common keys for Ad Networks
                 string partnerKey = key;
-                if (key == TrackingConstants.UP_IS_IAP_USER) partnerKey = "is_payer";
-                if (key == TrackingConstants.UP_CURRENT_LEVEL || key == TrackingConstants.UP_LEVEL) partnerKey = "user_level";
-                
+                if (key == TrackingConstants.UP_LEVEL) partnerKey = "user_level";
+
                 Adjust.AddGlobalPartnerParameter(partnerKey, value ?? "");
                 SDKLogger.Verbose("Adjust", $"Partner Param Sync: {partnerKey}={value}");
             }

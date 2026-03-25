@@ -295,7 +295,7 @@ namespace ArcherStudio.SDK.Tracking {
         public void IdentifyUser(UserProfile profile) {
             #if UNITY_EDITOR || DEVELOPMENT_BUILD
             string jsonProfile = JsonConvert.SerializeObject(profile, Formatting.None);
-            Debug.Log($"<color=green>[Tracking] Identify User: {profile.UserId} | Profile: {jsonProfile}</color>");
+            Debug.Log($"<color=green>[Tracking] Identify User: {profile.DeviceId} | Profile: {jsonProfile}</color>");
             #endif
 
             if (_currentUserProfile != null) {
@@ -307,7 +307,7 @@ namespace ArcherStudio.SDK.Tracking {
 
             var allProperties = profile.GetAllProperties();
             foreach (var provider in _providers) {
-                provider.SetUserId(profile.UserId);
+                provider.SetUserId(profile.DeviceId);
                 foreach (var prop in allProperties) {
                     provider.SetUserProperty(prop.Key, prop.Value);
                 }
@@ -376,7 +376,6 @@ namespace ArcherStudio.SDK.Tracking {
 
                 UpdateUserProfile(p => {
                     p.DaySinceInstall = activeDay;
-                    p.ActiveDayN = activeDay;
                 });
             } catch (Exception ex) {
                 SDKLogger.Warning(Tag, $"Error calculating retention: {ex.Message}");

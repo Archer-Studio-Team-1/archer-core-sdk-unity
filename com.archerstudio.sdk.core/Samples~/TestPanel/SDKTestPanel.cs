@@ -1013,7 +1013,7 @@ namespace ArcherStudio.SDK.Examples {
             _testCounter++;
             SDKLogger.Info(Tag, $"UserProfile: level={_testCounter}, stage=level_{_testCounter}");
             TrackingManager.Instance?.UpdateUserProfile(p => {
-                p.CurrentLevel = _testCounter;
+                p.CurrentForgeShopLevel = _testCounter;
                 p.CurrentStage = $"level_{_testCounter}";
                 p.ProgressStage = _testCounter;
             });
@@ -1033,11 +1033,12 @@ namespace ArcherStudio.SDK.Examples {
             }
             SDKLogger.Info(Tag,
                 $"UserProfile:\n" +
-                $"  UserId={profile.UserId}\n" +
-                $"  Level={profile.CurrentLevel}, Stage={profile.CurrentStage}\n" +
-                $"  IAP={profile.IsIapUser} (count={profile.IapCount})\n" +
-                $"  IAA={profile.IsIaaUser} (count={profile.IaaCount})\n" +
-                $"  Gem={profile.RemainingGem}\n" +
+                $"  DeviceId={profile.DeviceId}\n" +
+                $"  AdjustId={profile.AdjustId}\n" +
+                $"  ForgeShopLevel={profile.CurrentForgeShopLevel}, Stage={profile.CurrentStage}\n" +
+                $"  IAP count={profile.IapCount}\n" +
+                $"  IAA count={profile.IaaCount}\n" +
+                $"  Gem={profile.CurrentGem}\n" +
                 $"  DaySinceInstall={profile.DaySinceInstall}");
         }
         #endif

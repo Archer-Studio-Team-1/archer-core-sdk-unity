@@ -110,25 +110,22 @@ namespace ArcherStudio.SDK.Tracking {
         public const string SOURCE_ID_STATION = "station";
 
 
-        // ─── User Properties ───
-        public const string UP_USER_ID = "user_id";
-        public const string UP_AD_ID = "ad_id";
+        // ─── User Properties (v2) ───
+        public const string UP_ADJUST_ID = "adjust_id";
+        public const string UP_DEVICE_ID = "device_id";
+        public const string UP_FIREBASE_STORAGE_ID = "firebase_storage_id";
+        public const string UP_CURRENT_TASK = "current_task";
         public const string UP_CURRENT_STAGE = "current_stage";
         public const string UP_PROGRESS_STAGE = "progress_stage";
         public const string UP_EXPLORE_STAGE = "explore_stage";
-        public const string UP_CURRENT_LEVEL = "current_level";
+        public const string UP_CURRENT_EXPLORE_TICKET = "current_explore_ticket";
+        public const string UP_CURRENT_FORGE_SHOP_LEVEL = "current_forgeshoplevel";
+        public const string UP_CURRENT_EXPLORE_BOSS_LEVEL = "current_explorebosslevel";
+        public const string UP_CURRENT_GEM = "current_gem";
         public const string UP_LEVEL = "level";
         public const string UP_DAY_SINCE_INSTALL = "day_since_install";
-        public const string UP_IS_IAP_USER = "is_iap_user";
         public const string UP_IAP_COUNT = "iap_count";
-        public const string UP_IS_IAA_USER = "is_iaa_user";
         public const string UP_IAA_COUNT = "iaa_count";
-        public const string UP_ACTIVE_DAY_N = "active_day_n";
-        public const string UP_REMAINING_GEM = "remaining_gem";
-        public const string UP_UA_NETWORK = "ua_network";
-        public const string UP_UA_CAMPAIGN = "ua_campaign";
-        public const string UP_UA_ADGROUP = "ua_adgroup";
-        public const string UP_UA_CREATIVE = "ua_creative";
         public const string UP_STORE_NAME = "store_name";
         public const string UP_STORE_APP_ID = "store_app_id";
     }
