@@ -86,6 +86,38 @@ namespace ArcherStudio.SDK.Tracking.Tests {
             Assert.AreEqual(0, parameters[TrackingConstants.PAR_IAP_REVENUE_MICRO]);
         }
 
+        // ─── TaskEndEvent (v2 — new) ───
+
+        [Test]
+        public void TaskEndEvent_EventName_ReturnsTaskEnd() {
+            var evt = new TaskEndEvent("task_001", "UpgradeStaff25", "1_3");
+
+            Assert.AreEqual(TrackingConstants.EVT_TASK_END, evt.EventName);
+        }
+
+        [Test]
+        public void TaskEndEvent_ToParams_ContainsAllParams() {
+            var evt = new TaskEndEvent("task_001", "UpgradeStaff25", "1_3");
+
+            var parameters = evt.ToParams();
+
+            Assert.AreEqual("task_001", parameters[TrackingConstants.PAR_TASK_ID]);
+            Assert.AreEqual("UpgradeStaff25", parameters[TrackingConstants.PAR_TASK_NAME]);
+            Assert.AreEqual("1_3", parameters[TrackingConstants.PAR_STAGE_ID]);
+            Assert.AreEqual(3, parameters.Count);
+        }
+
+        [Test]
+        public void TaskEndEvent_NullDefaults() {
+            var evt = new TaskEndEvent(null, null, null);
+
+            var parameters = evt.ToParams();
+
+            Assert.AreEqual("Null", parameters[TrackingConstants.PAR_TASK_ID]);
+            Assert.AreEqual("Null", parameters[TrackingConstants.PAR_TASK_NAME]);
+            Assert.AreEqual("Null", parameters[TrackingConstants.PAR_STAGE_ID]);
+        }
+
         // ─── LoadingResultEvent (v2) ───
 
         [Test]

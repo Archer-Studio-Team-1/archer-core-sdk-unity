@@ -21,6 +21,7 @@ namespace ArcherStudio.SDK.Tracking {
         public const string EVT_EXPLORATION_START = "exploration_start";
         public const string EVT_EXPLORATION_END = "exploration_end";
         public const string EVT_EXPLORATION_RANK_UP = "exploration_rank_up";
+        public const string EVT_TASK_END = "task_end";
         public const string EVT_LOADING_RESULT = "loading_result";
         public const string EVT_IAP_REVENUE = "iap_revenue";
 
@@ -43,6 +44,9 @@ namespace ArcherStudio.SDK.Tracking {
         public const string PAR_CATEGORY = "category";
         public const string PAR_STAGE_ID = "stage_id";
         public const string PAR_DURATION = "duration";
+
+        public const string PAR_TASK_ID = "task_id";
+        public const string PAR_TASK_NAME = "task_name";
 
         public const string PAR_FEATURE_ID = "feature_id";
         public const string PAR_DURATION_FEATURE = "duration_feature";
