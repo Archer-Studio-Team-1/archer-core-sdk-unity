@@ -494,10 +494,7 @@ namespace ArcherStudio.SDK.Examples {
             CreateButton(c, "IAP Revenue (Success)", OnTrackIapRevenueSuccess, CLR_TRACKING);
             CreateButton(c, "IAP Revenue (Fail)", OnTrackIapRevenueFail, CLR_TRACKING);
             CreateButton(c, "Loading Result", OnTrackLoadingResult, CLR_TRACKING);
-            // Exploration events moved to game project (project-specific)
-            CreateButton(c, "Forge Upgrade", OnTrackForgeUpgrade, CLR_TRACKING);
-            CreateButton(c, "Character LvlUp", OnTrackCharacterLevelUp, CLR_TRACKING);
-            CreateButton(c, "Spell Upgrade", OnTrackSpellUpgrade, CLR_TRACKING);
+            // Exploration, Forge, Spell events moved to game project (project-specific)
             CreateButton(c, "Ad Revenue (Custom)", OnTrackAdRevenueCustom, CLR_TRACKING);
             CreateButton(c, "Ad Impression", OnTrackAdImpression, CLR_TRACKING);
             CreateButton(c, "Custom Event", OnTrackCustomEvent, CLR_TRACKING);
@@ -933,24 +930,6 @@ namespace ArcherStudio.SDK.Examples {
             int fps = (int)(1f / Time.deltaTime);
             SDKLogger.Info(Tag, $"Track: LoadingResultEvent (loading_time=5000, fps={fps}, status=success)");
             TrackingManager.Instance?.Track(new LoadingResultEvent(5000, fps, "success"));
-        }
-
-        private void OnTrackForgeUpgrade() {
-            _testCounter++;
-            SDKLogger.Info(Tag, $"Track: ForgeUpgradeEvent (level_{_testCounter})");
-            TrackingManager.Instance?.Track(new ForgeUpgradeEvent($"level_{_testCounter}"));
-        }
-
-        private void OnTrackCharacterLevelUp() {
-            _testCounter++;
-            SDKLogger.Info(Tag, $"Track: CharacterLevelUpEvent (level_{_testCounter})");
-            TrackingManager.Instance?.Track(new CharacterLevelUpEvent($"level_{_testCounter}"));
-        }
-
-        private void OnTrackSpellUpgrade() {
-            _testCounter++;
-            SDKLogger.Info(Tag, $"Track: SpellUpgradeEvent ({_spellName}, level_{_testCounter})");
-            TrackingManager.Instance?.Track(new SpellUpgradeEvent(_spellName, $"level_{_testCounter}"));
         }
 
         private void OnTrackAdRevenueCustom() {

@@ -19,6 +19,8 @@ namespace ArcherStudio.SDK.Tracking {
         public const string EVT_EARN_RESOURCE = "earn_resource";
         public const string EVT_SPEND_RESOURCE = "spend_resource";
         public const string EVT_EXPLORATION_END = "exploration_end";
+        public const string EVT_FORGE_SHOP_UPGRADE = "forge_shop_upgrade";
+        public const string EVT_SPELL_UPGRADE = "spell_upgrade";
         public const string EVT_TASK_END = "task_end";
         public const string EVT_LOADING_RESULT = "loading_result";
         public const string EVT_IAP_REVENUE = "iap_revenue";
@@ -64,10 +66,10 @@ namespace ArcherStudio.SDK.Tracking {
 
         public const string PAR_SPELL_ID = "spell_id";
         public const string PAR_SPELL_LEVEL = "spell_level";
-        public const string PAR_DAY_SINCE_UNLOCK = "day_since_unlock";
 
-        public const string PAR_FORGE_LEVEL = "forge_level";
-        public const string PAR_LEVEL_ID = "level_id";
+        public const string PAR_NUMBER_BLUEPRINT = "number_blueprint";
+        public const string PAR_SHOP_LEVEL = "shop_level";
+        public const string PAR_PROFIT_BONUS = "profit_bonus";
 
         public const string PAR_NUMBER_TICKETS = "number_tickets";
         public const string PAR_BOSS_LEVEL = "boss_level";
