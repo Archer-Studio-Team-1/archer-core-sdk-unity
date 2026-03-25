@@ -194,24 +194,15 @@ namespace ArcherStudio.SDK.Examples {
                 new BuyResourceEvent(data, amount, remaining, totalBought));
         }
 
-        // ─── Purchase Tracking ───
+        // ─── IAP Revenue Tracking (v2) ───
 
         /// <summary>
-        /// Track khi hiện shop / purchase dialog.
+        /// Track khi player mua IAP (thành công hoặc thất bại).
         /// </summary>
-        public void TrackPurchaseShow(string productId, string source, string reason) {
+        public void TrackIapRevenue(string productId, int revenueMicro,
+            string purchaseStatus, string failReason = null, string placement = null) {
             TrackingManager.Instance.Track(
-                new PurchaseShowEvent(productId, source, reason));
-        }
-
-        /// <summary>
-        /// Track kết quả purchase.
-        /// </summary>
-        /// <param name="status">1 = success, 0 = failed, -1 = cancelled</param>
-        public void TrackPurchaseResult(
-            string productId, string source, string reason, int status) {
-            TrackingManager.Instance.Track(
-                new PurchaseResultEvent(productId, source, reason, status));
+                new IapRevenueEvent(productId, revenueMicro, purchaseStatus, failReason, placement));
         }
 
         // ─── Button Click ───
@@ -674,15 +665,11 @@ namespace ArcherStudio.SDK.Examples {
 
         // ─── Game Flow: IAP ───
 
-        public void OnPurchaseButtonClicked(string productId) {
+        public void OnPurchaseSuccess(string productId, int gemAmount, double revenueUsd) {
+            // Track iap_revenue (v2)
+            int revenueMicro = (int)(revenueUsd * 1_000_000);
             TrackingManager.Instance.Track(
-                new PurchaseShowEvent(productId, "shop", "tap_buy"));
-        }
-
-        public void OnPurchaseSuccess(string productId, int gemAmount) {
-            // Track purchase result
-            TrackingManager.Instance.Track(
-                new PurchaseResultEvent(productId, "shop", "tap_buy", 1));
+                new IapRevenueEvent(productId, revenueMicro, "success", null, "click"));
 
             // Track resource bought
             _totalGems += (double)gemAmount;
@@ -701,14 +688,9 @@ namespace ArcherStudio.SDK.Examples {
             });
         }
 
-        public void OnPurchaseFailed(string productId) {
+        public void OnPurchaseFailed(string productId, string errorMessage) {
             TrackingManager.Instance.Track(
-                new PurchaseResultEvent(productId, "shop", "tap_buy", 0));
-        }
-
-        public void OnPurchaseCancelled(string productId) {
-            TrackingManager.Instance.Track(
-                new PurchaseResultEvent(productId, "shop", "tap_buy", -1));
+                new IapRevenueEvent(productId, 0, "fail", errorMessage, "click"));
         }
 
         // ─── Game Flow: App Resume → App Open Ad ───
@@ -774,7 +756,7 @@ namespace ArcherStudio.SDK.Examples {
     // ═════════════════════════════════════════════════════════════
     //
     //  Khi cần gửi revenue event riêng cho Adjust
-    //  (không dùng PurchaseResultEvent), tạo class kế thừa
+    //  (không dùng IapRevenueEvent), tạo class kế thừa
     //  GameTrackingEvent và override AdjustToken + Revenue fields.
     //
     // ═════════════════════════════════════════════════════════════

@@ -491,8 +491,8 @@ namespace ArcherStudio.SDK.Examples {
             CreateButton(c, "Feature Close", OnTrackFeatureClose, CLR_TRACKING);
             CreateButton(c, "Earn Resource", OnTrackEarnResource, CLR_TRACKING);
             CreateButton(c, "Spend Resource", OnTrackSpendResource, CLR_TRACKING);
-            CreateButton(c, "Purchase Show", OnTrackPurchaseShow, CLR_TRACKING);
-            CreateButton(c, "Purchase Result", OnTrackPurchaseOK, CLR_TRACKING);
+            CreateButton(c, "IAP Revenue (Success)", OnTrackIapRevenueSuccess, CLR_TRACKING);
+            CreateButton(c, "IAP Revenue (Fail)", OnTrackIapRevenueFail, CLR_TRACKING);
             CreateButton(c, "Loading Start", OnTrackLoadingStart, CLR_TRACKING);
             CreateButton(c, "Loading Result", OnTrackLoadingResult, CLR_TRACKING);
             CreateButton(c, "Exploration Start", OnTrackExplorationStart, CLR_TRACKING);
@@ -919,14 +919,17 @@ namespace ArcherStudio.SDK.Examples {
             TrackingManager.Instance?.Track(new SpendResourceEvent(data, _spendAmount, 500, _spendAmount));
         }
 
-        private void OnTrackPurchaseShow() {
-            SDKLogger.Info(Tag, $"Track: PurchaseShowEvent ({_purchaseItemId})");
-            TrackingManager.Instance?.Track(new PurchaseShowEvent(_purchaseItemId, _purchaseItemSource, _purchaseItemTrigger));
+        private void OnTrackIapRevenueSuccess() {
+            int revenueMicro = (int)(0.99 * 1_000_000);
+            SDKLogger.Info(Tag, $"Track: IapRevenueEvent ({_purchaseItemId}, success, micro={revenueMicro})");
+            TrackingManager.Instance?.Track(new IapRevenueEvent(
+                _purchaseItemId, revenueMicro, "success", null, _purchaseItemTrigger));
         }
 
-        private void OnTrackPurchaseOK() {
-            SDKLogger.Info(Tag, $"Track: PurchaseResultEvent ({_purchaseItemId}, status=1)");
-            TrackingManager.Instance?.Track(new PurchaseResultEvent(_purchaseItemId, _purchaseItemSource, _purchaseItemTrigger, 1));
+        private void OnTrackIapRevenueFail() {
+            SDKLogger.Info(Tag, $"Track: IapRevenueEvent ({_purchaseItemId}, fail)");
+            TrackingManager.Instance?.Track(new IapRevenueEvent(
+                _purchaseItemId, 0, "fail", "USER_CANCELED", _purchaseItemTrigger));
         }
 
         private void OnTrackLoadingStart() {

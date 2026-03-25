@@ -24,8 +24,7 @@ namespace ArcherStudio.SDK.Tracking {
         public const string EVT_EXPLORATION_RANK_UP = "exploration_rank_up";
         public const string EVT_LOADING_START = "loading_start";
         public const string EVT_LOADING_RESULT = "loading_result";
-        public const string EVT_PURCHASE_SHOW = "purchase_show";
-        public const string EVT_PURCHASE_RESULT = "purchase_result";
+        public const string EVT_IAP_REVENUE = "iap_revenue";
 
         // ─── Parameter Keys ───
         public const string PAR_AD_MEDIATION = "ad_mediation";
@@ -81,8 +80,10 @@ namespace ArcherStudio.SDK.Tracking {
         public const string PAR_FPS = "fps";
 
         public const string PAR_PRODUCT_ID = "product_id";
-        public const string PAR_REASON = "reason";
-        public const string PAR_STATUS = "status";
+        public const string PAR_IAP_REVENUE_MICRO = "iap_revenue_micro";
+        public const string PAR_PURCHASE_STATUS = "purchase_status";
+        public const string PAR_FAIL_REASON = "fail_reason";
+        public const string PAR_STATUS = "status"; // used by LoadingEvents (will be migrated later)
 
         // ─── Resource Sources ───
         public const string SOURCE_MAIN = "main";

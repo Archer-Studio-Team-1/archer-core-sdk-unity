@@ -49,47 +49,38 @@ namespace ArcherStudio.SDK.Tracking.Tests {
             Assert.AreEqual(3, parameters.Count);
         }
 
-        // ─── PurchaseShowEvent ───
+        // ─── IapRevenueEvent (v2) ───
 
         [Test]
-        public void PurchaseShowEvent_EventName_ReturnsPurchaseShow() {
-            var evt = new PurchaseShowEvent("gem_pack_01", "shop", "low_gems");
+        public void IapRevenueEvent_EventName_ReturnsIapRevenue() {
+            var evt = new IapRevenueEvent("gem_pack_01", 990000, "success");
 
-            Assert.AreEqual(TrackingConstants.EVT_PURCHASE_SHOW, evt.EventName);
+            Assert.AreEqual(TrackingConstants.EVT_IAP_REVENUE, evt.EventName);
         }
 
         [Test]
-        public void PurchaseShowEvent_ToParams_ContainsProductIdSourceAndReason() {
-            var evt = new PurchaseShowEvent("gem_pack_01", "shop", "low_gems");
+        public void IapRevenueEvent_ToParams_ContainsAllParams() {
+            var evt = new IapRevenueEvent("gem_pack_01", 990000, "success", null, "click");
 
             var parameters = evt.ToParams();
 
             Assert.AreEqual("gem_pack_01", parameters[TrackingConstants.PAR_PRODUCT_ID]);
-            Assert.AreEqual("shop", parameters[TrackingConstants.PAR_SOURCE]);
-            Assert.AreEqual("low_gems", parameters[TrackingConstants.PAR_REASON]);
-            Assert.AreEqual(3, parameters.Count);
-        }
-
-        // ─── PurchaseResultEvent ───
-
-        [Test]
-        public void PurchaseResultEvent_EventName_ReturnsPurchaseResult() {
-            var evt = new PurchaseResultEvent("gem_pack_01", "shop", "low_gems", 1);
-
-            Assert.AreEqual(TrackingConstants.EVT_PURCHASE_RESULT, evt.EventName);
+            Assert.AreEqual(990000, parameters[TrackingConstants.PAR_IAP_REVENUE_MICRO]);
+            Assert.AreEqual("success", parameters[TrackingConstants.PAR_PURCHASE_STATUS]);
+            Assert.AreEqual("Null", parameters[TrackingConstants.PAR_FAIL_REASON]);
+            Assert.AreEqual("click", parameters[TrackingConstants.PAR_PLACEMENT]);
+            Assert.AreEqual(5, parameters.Count);
         }
 
         [Test]
-        public void PurchaseResultEvent_ToParams_ContainsProductIdSourceReasonAndStatus() {
-            var evt = new PurchaseResultEvent("gem_pack_01", "shop", "low_gems", 1);
+        public void IapRevenueEvent_Failed_ContainsFailReason() {
+            var evt = new IapRevenueEvent("gem_pack_01", 0, "fail", "USER_CANCELED", "popup");
 
             var parameters = evt.ToParams();
 
-            Assert.AreEqual("gem_pack_01", parameters[TrackingConstants.PAR_PRODUCT_ID]);
-            Assert.AreEqual("shop", parameters[TrackingConstants.PAR_SOURCE]);
-            Assert.AreEqual("low_gems", parameters[TrackingConstants.PAR_REASON]);
-            Assert.AreEqual(1, parameters[TrackingConstants.PAR_STATUS]);
-            Assert.AreEqual(4, parameters.Count);
+            Assert.AreEqual("fail", parameters[TrackingConstants.PAR_PURCHASE_STATUS]);
+            Assert.AreEqual("USER_CANCELED", parameters[TrackingConstants.PAR_FAIL_REASON]);
+            Assert.AreEqual(0, parameters[TrackingConstants.PAR_IAP_REVENUE_MICRO]);
         }
 
         // ─── GenericGameTrackingEvent ───

@@ -129,14 +129,18 @@ namespace ArcherStudio.SDK.IAP {
                 return;
             }
 
-            // Track purchase show
             var trackingManager = TrackingManager.Instance;
-            trackingManager?.Track(new PurchaseShowEvent(productId, source, reason));
 
             _provider.Purchase(productId, result => {
-                // Track purchase result
-                trackingManager?.Track(new PurchaseResultEvent(
-                    productId, source, reason, result.Success ? 1 : 0));
+                // Track iap_revenue custom event (v2)
+                var productInfo = _provider?.GetProduct(productId);
+                double revenue = productInfo.HasValue ? (double)productInfo.Value.PriceDecimal : 0;
+                int revenueMicro = (int)(revenue * 1_000_000);
+                string status = result.Success ? "success" : "fail";
+                string failReason = result.Success ? null : result.ErrorMessage;
+
+                trackingManager?.Track(new IapRevenueEvent(
+                    productId, revenueMicro, status, failReason, reason));
 
                 if (result.Success) {
                     SDKLogger.Info(Tag, $"Purchase succeeded: {productId}");

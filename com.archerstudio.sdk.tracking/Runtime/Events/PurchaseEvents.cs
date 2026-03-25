@@ -2,46 +2,34 @@ using System.Collections.Generic;
 
 namespace ArcherStudio.SDK.Tracking.Events {
 
-    public class PurchaseShowEvent : GameTrackingEvent {
-        public override string EventName => TrackingConstants.EVT_PURCHASE_SHOW;
+    /// <summary>
+    /// Custom iap_revenue event per tracking_v2 spec.
+    /// Trigger khi player mua IAP (thành công hoặc thất bại).
+    /// </summary>
+    public class IapRevenueEvent : GameTrackingEvent {
+        public override string EventName => TrackingConstants.EVT_IAP_REVENUE;
 
         private readonly string _productId;
-        private readonly string _source;
-        private readonly string _reason;
+        private readonly int _iapRevenueMicro;
+        private readonly string _purchaseStatus;
+        private readonly string _failReason;
+        private readonly string _placement;
 
-        public PurchaseShowEvent(string productId, string source, string reason) {
+        public IapRevenueEvent(string productId, int iapRevenueMicro, string purchaseStatus,
+            string failReason = null, string placement = null) {
             _productId = productId;
-            _source = source;
-            _reason = reason;
+            _iapRevenueMicro = iapRevenueMicro;
+            _purchaseStatus = purchaseStatus;
+            _failReason = failReason;
+            _placement = placement;
         }
 
         protected override void BuildParams(Dictionary<string, object> dict) {
-            dict.Add(TrackingConstants.PAR_PRODUCT_ID, _productId);
-            dict.Add(TrackingConstants.PAR_SOURCE, _source);
-            dict.Add(TrackingConstants.PAR_REASON, _reason);
-        }
-    }
-
-    public class PurchaseResultEvent : GameTrackingEvent {
-        public override string EventName => TrackingConstants.EVT_PURCHASE_RESULT;
-
-        private readonly string _productId;
-        private readonly string _source;
-        private readonly string _reason;
-        private readonly int _status;
-
-        public PurchaseResultEvent(string productId, string source, string reason, int status) {
-            _productId = productId;
-            _source = source;
-            _reason = reason;
-            _status = status;
-        }
-
-        protected override void BuildParams(Dictionary<string, object> dict) {
-            dict.Add(TrackingConstants.PAR_PRODUCT_ID, _productId);
-            dict.Add(TrackingConstants.PAR_SOURCE, _source);
-            dict.Add(TrackingConstants.PAR_REASON, _reason);
-            dict.Add(TrackingConstants.PAR_STATUS, _status);
+            dict.Add(TrackingConstants.PAR_PRODUCT_ID, _productId ?? "Null");
+            dict.Add(TrackingConstants.PAR_IAP_REVENUE_MICRO, _iapRevenueMicro);
+            dict.Add(TrackingConstants.PAR_PURCHASE_STATUS, _purchaseStatus ?? "Null");
+            dict.Add(TrackingConstants.PAR_FAIL_REASON, _failReason ?? "Null");
+            dict.Add(TrackingConstants.PAR_PLACEMENT, _placement ?? "Null");
         }
     }
 }
