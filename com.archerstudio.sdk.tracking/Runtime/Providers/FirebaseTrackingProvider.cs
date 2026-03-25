@@ -125,8 +125,12 @@ namespace ArcherStudio.SDK.Tracking {
             #if HAS_FIREBASE_SDK
             if (!_isReady) return;
 
+            // Firebase uses "AppLovin" per Firebase doc convention;
+            // Adjust uses "applovin_max_sdk" for cost auto-matching.
+            string firebasePlatform = adPlatform == "applovin_max_sdk" ? "AppLovin" : (adPlatform ?? "");
+
             var parameters = new Parameter[] {
-                new Parameter("ad_platform", adPlatform ?? ""),
+                new Parameter("ad_platform", firebasePlatform),
                 new Parameter("ad_source", adSource ?? ""),
                 new Parameter("ad_format", adFormat ?? ""),
                 new Parameter("ad_unit_name", adUnitName ?? ""),
@@ -136,7 +140,7 @@ namespace ArcherStudio.SDK.Tracking {
             };
 
             FirebaseAnalytics.LogEvent(FirebaseAnalytics.EventAdImpression, parameters);
-            SDKLogger.Info("Firebase", $"AdRevenue: {adPlatform}/{adSource} {currency} {value:F6} [{adFormat}]");
+            SDKLogger.Info("Firebase", $"AdRevenue: {firebasePlatform}/{adSource} {currency} {value:F6} [{adFormat}]");
             #endif
         }
 

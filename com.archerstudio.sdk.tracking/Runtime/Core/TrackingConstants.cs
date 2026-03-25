@@ -6,10 +6,9 @@ namespace ArcherStudio.SDK.Tracking {
     /// </summary>
     public static class TrackingConstants {
 
-        // ─── Event Names ───
+        // ─── Event Names (v2) ───
         public const string EVT_AD_IMPRESSION = "ad_impression";
-        public const string EVT_AD_CLICK = "ad_click";
-        public const string EVT_AD_COMPLETE = "ad_complete";
+        public const string EVT_AD_REVENUE = "ad_revenue";
         public const string EVT_TUTORIAL = "tutorial";
         public const string EVT_STAGE_START = "stage_start";
         public const string EVT_STAGE_END = "stage_end";
@@ -29,15 +28,16 @@ namespace ArcherStudio.SDK.Tracking {
         public const string EVT_PURCHASE_RESULT = "purchase_result";
 
         // ─── Parameter Keys ───
-        public const string PAR_AD_PLATFORM = "ad_platform";
+        public const string PAR_AD_MEDIATION = "ad_mediation";
         public const string PAR_AD_SOURCE = "ad_source";
+        public const string PAR_AD_UNIT_ID = "ad_unit_id";
+        public const string PAR_PLACEMENT = "placement";
+        public const string PAR_IAA_REVENUE_MICRO = "iaa_revenue_micro";
+        public const string PAR_AD_PLATFORM = "ad_platform";
         public const string PAR_AD_FORMAT = "ad_format";
         public const string PAR_AD_UNIT_NAME = "ad_unit_name";
         public const string PAR_CURRENCY = "currency";
         public const string PAR_VALUE = "value";
-        public const string PAR_PLACEMENT = "placement";
-        public const string PAR_END_TYPE = "end_type";
-        public const string PAR_AD_DURATION = "ad_duration";
 
         public const string PAR_TUT_CATEGORY = "tut_category";
         public const string PAR_TUT_NAME = "tut_name";

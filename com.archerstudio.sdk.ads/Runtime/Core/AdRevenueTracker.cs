@@ -17,17 +17,23 @@ namespace ArcherStudio.SDK.Ads {
 
             var trackingManager = TrackingManager.Instance;
             if (trackingManager != null) {
-                // Track ad revenue through all providers (one call)
-                // Firebase: logs "ad_impression" event
-                // Adjust: uses AdjustAdRevenue API internally
+                // 1. ad_impression (Firebase built-in) — kept for MAX mediation auto-collection
+                //    Firebase logs this as ad_impression event; Adjust uses AdjustAdRevenue API
                 trackingManager.TrackAdRevenue(
                     data.AdPlatform, data.AdSource, data.AdFormat,
                     data.AdUnitName, data.Currency, data.Value,
                     data.Placement);
 
-                // Update IAA status on user profile
+                // 2. ad_revenue (custom event) — exported to BigQuery for data analysis
+                //    ad_impression default Firebase event doesn't export to BQ
+                int revenueMicro = (int)(data.Value * 1_000_000);
+                trackingManager.TrackAdRevenueCustomEvent(
+                    data.AdPlatform, data.AdSource, data.AdUnitName,
+                    data.Placement, revenueMicro);
+
+                // Update IAA count on user profile
                 trackingManager.UpdateUserProfile(p => {
-                    p.IaaCount = p.IaaCount + 1;
+                    p.IaaCount += 1;
                 });
             }
 

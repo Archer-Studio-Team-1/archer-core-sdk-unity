@@ -501,8 +501,7 @@ namespace ArcherStudio.SDK.Examples {
             CreateButton(c, "Forge Upgrade", OnTrackForgeUpgrade, CLR_TRACKING);
             CreateButton(c, "Character LvlUp", OnTrackCharacterLevelUp, CLR_TRACKING);
             CreateButton(c, "Spell Upgrade", OnTrackSpellUpgrade, CLR_TRACKING);
-            CreateButton(c, "Ad Click", OnTrackAdClick, CLR_TRACKING);
-            CreateButton(c, "Ad Complete", OnTrackAdComplete, CLR_TRACKING);
+            CreateButton(c, "Ad Revenue (Custom)", OnTrackAdRevenueCustom, CLR_TRACKING);
             CreateButton(c, "Ad Impression", OnTrackAdImpression, CLR_TRACKING);
             CreateButton(c, "Custom Event", OnTrackCustomEvent, CLR_TRACKING);
 
@@ -975,16 +974,11 @@ namespace ArcherStudio.SDK.Examples {
             TrackingManager.Instance?.Track(new SpellUpgradeEvent(_spellName, $"level_{_testCounter}"));
         }
 
-        private void OnTrackAdClick() {
-            SDKLogger.Info(Tag, $"Track: AdClickEvent ({_adMediationName}, {_adNetworkName}, Interstitial)");
-            TrackingManager.Instance?.Track(new AdClickEvent(
-                _adMediationName, _adNetworkName, "Interstitial", _adUnitId, _adPlacementName));
-        }
-
-        private void OnTrackAdComplete() {
-            SDKLogger.Info(Tag, $"Track: AdCompleteEvent ({_adMediationName}, {_adNetworkName}, Rewarded, 30s)");
-            TrackingManager.Instance?.Track(new AdCompleteEvent(
-                _adMediationName, _adNetworkName, "Rewarded", _adUnitId, _adPlacementName, "completed", 30));
+        private void OnTrackAdRevenueCustom() {
+            int revenueMicro = (int)(0.001 * 1_000_000);
+            SDKLogger.Info(Tag, $"Track: AdRevenueCustomEvent ({_adMediationName}, {_adNetworkName}, {_adUnitId}, micro={revenueMicro})");
+            TrackingManager.Instance?.TrackAdRevenueCustomEvent(
+                _adMediationName, _adNetworkName, _adUnitId, _adPlacementName, revenueMicro);
         }
 
         private void OnTrackAdImpression() {

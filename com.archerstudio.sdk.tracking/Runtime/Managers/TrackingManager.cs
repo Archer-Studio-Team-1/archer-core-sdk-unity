@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using ArcherStudio.SDK.Core;
+using ArcherStudio.SDK.Tracking.Events;
 using Newtonsoft.Json;
 using UnityEngine;
 
@@ -251,6 +252,35 @@ namespace ArcherStudio.SDK.Tracking {
             foreach (var provider in _providers) {
                 provider.TrackAdRevenue(adPlatform, adSource, adFormat,
                     adUnitName, currency, value, placement);
+            }
+        }
+
+        /// <summary>
+        /// Track ad_revenue custom event for BigQuery export.
+        /// ad_impression (Firebase built-in) doesn't export to BQ, so this custom event fills that gap.
+        /// adMediation: "Max" or "Admob"
+        /// </summary>
+        public void TrackAdRevenueCustomEvent(string adMediation, string adSource,
+            string adUnitId, string placement, int iaaRevenueMicro) {
+            var customEvent = new GenericGameTrackingEvent(TrackingConstants.EVT_AD_REVENUE,
+                new System.Collections.Generic.Dictionary<string, object> {
+                    { TrackingConstants.PAR_AD_MEDIATION, adMediation ?? "Null" },
+                    { TrackingConstants.PAR_AD_SOURCE, adSource ?? "Null" },
+                    { TrackingConstants.PAR_AD_UNIT_ID, adUnitId ?? "Null" },
+                    { TrackingConstants.PAR_PLACEMENT, placement ?? "Null" },
+                    { TrackingConstants.PAR_IAA_REVENUE_MICRO, iaaRevenueMicro }
+                });
+
+            #if UNITY_EDITOR || DEVELOPMENT_BUILD
+            bool verbose = _config == null || _config.VerboseLogging;
+            if (verbose) {
+                Debug.Log($"<color=cyan>[Tracking] ad_revenue: mediation={adMediation}, " +
+                          $"source={adSource}, unit={adUnitId}, revenue_micro={iaaRevenueMicro}</color>");
+            }
+            #endif
+
+            foreach (var provider in _providers) {
+                provider.TrackEvent(customEvent);
             }
         }
 
