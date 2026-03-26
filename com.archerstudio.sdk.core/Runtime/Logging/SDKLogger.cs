@@ -5,12 +5,12 @@ using UnityEngine;
 namespace ArcherStudio.SDK.Core {
 
     public enum LogLevel {
-        Verbose = 0,
+        None = 0,
         Debug = 1,
         Info = 2,
         Warning = 3,
         Error = 4,
-        None = 99
+        Verbose = 99
     }
 
     /// <summary>
