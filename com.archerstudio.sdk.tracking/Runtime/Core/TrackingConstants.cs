@@ -118,23 +118,13 @@ namespace ArcherStudio.SDK.Tracking {
         public const string SOURCE_ID_STATION = "station";
 
 
-        // ─── User Properties (v2) ───
+        // ─── User Properties (base — common across all games) ───
         public const string UP_ADJUST_ID = "adjust_id";
         public const string UP_DEVICE_ID = "device_id";
         public const string UP_FIREBASE_STORAGE_ID = "firebase_storage_id";
         public const string UP_CURRENT_TASK = "current_task";
         public const string UP_CURRENT_STAGE = "current_stage";
         public const string UP_PROGRESS_STAGE = "progress_stage";
-        public const string UP_EXPLORE_STAGE = "explore_stage";
-        public const string UP_CURRENT_EXPLORE_TICKET = "current_explore_ticket";
-        public const string UP_CURRENT_FORGE_SHOP_LEVEL = "current_forgeshoplevel";
-        public const string UP_CURRENT_EXPLORE_BOSS_LEVEL = "current_explorebosslevel";
         public const string UP_CURRENT_GEM = "current_gem";
-        public const string UP_LEVEL = "level";
-        public const string UP_DAY_SINCE_INSTALL = "day_since_install";
-        public const string UP_IAP_COUNT = "iap_count";
-        public const string UP_IAA_COUNT = "iaa_count";
-        public const string UP_STORE_NAME = "store_name";
-        public const string UP_STORE_APP_ID = "store_app_id";
     }
 }

@@ -114,7 +114,7 @@ namespace ArcherStudio.SDK.Tracking {
                                 provider.SetConsent(_currentConsent);
 
                                 if (provider.ProviderId == "firebase") {
-                                    CalculateRetentionDays();
+                                    // V2: CalculateRetentionDays removed (day_since_install not in v2 spec)
                                 }
                             } else {
                                 SDKLogger.Error(Tag,
@@ -324,8 +324,8 @@ namespace ArcherStudio.SDK.Tracking {
 
         public void IdentifyUser(UserProfile profile) {
             #if UNITY_EDITOR || DEVELOPMENT_BUILD
-            string jsonProfile = JsonConvert.SerializeObject(profile, Formatting.None);
-            Debug.Log($"<color=green>[Tracking] Identify User: {profile.DeviceId} | Profile: {jsonProfile}</color>");
+            string jsonProps = JsonConvert.SerializeObject(profile.GetAllProperties(), Formatting.None);
+            Debug.Log($"<color=green>[Tracking] Identify User: {profile.DeviceId} | Properties: {jsonProps}</color>");
             #endif
 
             if (_currentUserProfile != null) {
@@ -391,26 +391,7 @@ namespace ArcherStudio.SDK.Tracking {
             }
         }
 
-        private void CalculateRetentionDays() {
-            var profile = _currentUserProfile;
-            if (profile == null) return;
-
-            if (profile.InstallTimestamp <= 0) {
-                profile.InstallTimestamp = DateTime.UtcNow.Ticks;
-            }
-
-            try {
-                DateTime installDate = new DateTime(profile.InstallTimestamp).Date;
-                int daysDiff = (DateTime.UtcNow.Date - installDate).Days;
-                int activeDay = Mathf.Max(0, daysDiff);
-
-                UpdateUserProfile(p => {
-                    p.DaySinceInstall = activeDay;
-                });
-            } catch (Exception ex) {
-                SDKLogger.Warning(Tag, $"Error calculating retention: {ex.Message}");
-            }
-        }
+        // V2: CalculateRetentionDays removed (day_since_install not in v2 spec)
 
         private void Update() {
             if (_isDirty && _currentUserProfile != null) {

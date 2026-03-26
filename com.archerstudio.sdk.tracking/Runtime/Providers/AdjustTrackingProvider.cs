@@ -167,16 +167,6 @@ namespace ArcherStudio.SDK.Tracking {
                 SDKLogger.Error("Adjust", $"  Adjust.InitSdk() failed: {e.Message}");
             }
 
-            // Push Store Info to User Properties
-            if (!string.IsNullOrEmpty(storeName)) {
-                TrackingManager.Instance?.UpdateUserProfile(p => {
-                    p.StoreName = storeName;
-                    if (!string.IsNullOrEmpty(storeAppId)) {
-                        p.StoreAppId = storeAppId;
-                    }
-                });
-            }
-
             SDKLogger.Info("Adjust", "═══════════════════════════════════════");
 
             // Always complete — don't wait for session callbacks and don't block on errors.
@@ -952,7 +942,6 @@ namespace ArcherStudio.SDK.Tracking {
             #if HAS_ADJUST_SDK
             if (!string.IsNullOrEmpty(key)) {
                 string partnerKey = key;
-                if (key == TrackingConstants.UP_LEVEL) partnerKey = "user_level";
 
                 Adjust.AddGlobalPartnerParameter(partnerKey, value ?? "");
                 SDKLogger.Verbose("Adjust", $"Partner Param Sync: {partnerKey}={value}");

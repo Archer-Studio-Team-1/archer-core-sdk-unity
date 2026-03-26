@@ -146,11 +146,6 @@ namespace ArcherStudio.SDK.IAP {
                 if (result.Success) {
                     SDKLogger.Info(Tag, $"Purchase succeeded: {productId}");
 
-                    // Update user profile
-                    trackingManager?.UpdateUserProfile(p => {
-                        p.IapCount = p.IapCount + 1;
-                    });
-
                     // Validate receipt if configured
                     if (_config.EnableReceiptValidation && _receiptValidator != null) {
                         _receiptValidator.Validate(result.Receipt, productId, validation => {

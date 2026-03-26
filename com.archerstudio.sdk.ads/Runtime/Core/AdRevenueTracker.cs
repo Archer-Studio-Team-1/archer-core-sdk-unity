@@ -31,10 +31,6 @@ namespace ArcherStudio.SDK.Ads {
                     data.AdPlatform, data.AdSource, data.AdUnitName,
                     data.Placement, revenueMicro);
 
-                // Update IAA count on user profile
-                trackingManager.UpdateUserProfile(p => {
-                    p.IaaCount += 1;
-                });
             }
 
             // Publish SDK event for other modules
