@@ -1,0 +1,19 @@
+{
+  "name": "ArcherStudio.SDK.TestLab.Editor",
+  "rootNamespace": "ArcherStudio.SDK.TestLab.Editor",
+  "references": [
+    "ArcherStudio.SDK.TestLab",
+    "ArcherStudio.SDK.Core"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false
+}

@@ -1,0 +1,21 @@
+{
+  "name": "com.archerstudio.sdk.testlab",
+  "version": "0.1.4",
+  "displayName": "Archer Studio SDK - Firebase Test Lab",
+  "description": "Firebase Test Lab integration: Game Loop handler, scenario management, editor tools for triggering tests on real devices, and build processors for Android/iOS configuration.",
+  "unity": "6000.0",
+  "author": {
+    "name": "QuanNV - Team 1"
+  },
+  "keywords": [
+    "sdk",
+    "firebase",
+    "testlab",
+    "testing",
+    "gameloop",
+    "archerstudio"
+  ],
+  "dependencies": {
+    "com.archerstudio.sdk.core": "0.1.4"
+  }
+}

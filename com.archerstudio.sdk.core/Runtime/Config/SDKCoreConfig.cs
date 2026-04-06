@@ -29,5 +29,6 @@ namespace ArcherStudio.SDK.Core {
         public bool EnableRemoteConfig = true;
         public bool EnablePush = false;
         public bool EnableDeepLink = false;
+        public bool EnableTestLab = false;
     }
 }

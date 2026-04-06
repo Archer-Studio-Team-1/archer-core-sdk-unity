@@ -45,6 +45,7 @@ namespace ArcherStudio.SDK.Core.Editor {
         private bool _enableRemoteConfig = true;
         private bool _enablePush;
         private bool _enableDeepLink;
+        private bool _enableTestLab;
 
         [MenuItem("ArcherStudio/SDK/Setup Wizard", false, 0)]
         public static void ShowWindow() {
@@ -134,6 +135,7 @@ namespace ArcherStudio.SDK.Core.Editor {
             _enableRemoteConfig = EditorGUILayout.Toggle("Remote Config", _enableRemoteConfig);
             _enablePush = EditorGUILayout.Toggle("Push Notifications", _enablePush);
             _enableDeepLink = EditorGUILayout.Toggle("Deep Linking", _enableDeepLink);
+            _enableTestLab = EditorGUILayout.Toggle("Firebase Test Lab", _enableTestLab);
 
             EditorGUILayout.Space(8);
             EditorGUILayout.LabelField("Actions", EditorStyles.boldLabel);
@@ -170,6 +172,7 @@ namespace ArcherStudio.SDK.Core.Editor {
             DrawModuleConfigButton("RemoteConfigConfig", "Remote Config", "com.archerstudio.sdk.remoteconfig");
             DrawModuleConfigButton("PushConfig", "Push Config", "com.archerstudio.sdk.push");
             DrawModuleConfigButton("DeepLinkConfig", "Deep Link Config", "com.archerstudio.sdk.deeplink");
+            DrawModuleConfigButton("TestLabConfig", "Test Lab Config", "com.archerstudio.sdk.testlab");
         }
 
         private void DrawSymbolsTab() {
@@ -387,14 +390,14 @@ namespace ArcherStudio.SDK.Core.Editor {
         }
 
         private struct ModuleToggles {
-            public bool Consent, Tracking, Analytics, Ads, IAP, RemoteConfig, Push, DeepLink;
-            public ModuleToggles(bool allOn = true) { Consent = Tracking = Analytics = Ads = IAP = RemoteConfig = allOn; Push = DeepLink = false; }
+            public bool Consent, Tracking, Analytics, Ads, IAP, RemoteConfig, Push, DeepLink, TestLab;
+            public ModuleToggles(bool allOn = true) { Consent = Tracking = Analytics = Ads = IAP = RemoteConfig = allOn; Push = DeepLink = TestLab = false; }
         }
 
         private ModuleToggles GetModuleToggles() {
             return new ModuleToggles {
                 Consent = _enableConsent, Tracking = _enableTracking, Analytics = _enableAnalytics, Ads = _enableAds, IAP = _enableIAP,
-                RemoteConfig = _enableRemoteConfig, Push = _enablePush, DeepLink = _enableDeepLink
+                RemoteConfig = _enableRemoteConfig, Push = _enablePush, DeepLink = _enableDeepLink, TestLab = _enableTestLab
             };
         }
 
@@ -410,6 +413,7 @@ namespace ArcherStudio.SDK.Core.Editor {
             if (toggles.RemoteConfig) count += CreateModuleConfig("RemoteConfigConfig") ? 1 : 0;
             if (toggles.Push) count += CreateModuleConfig("PushConfig") ? 1 : 0;
             if (toggles.DeepLink) count += CreateModuleConfig("DeepLinkConfig") ? 1 : 0;
+            if (toggles.TestLab) count += CreateModuleConfig("TestLabConfig") ? 1 : 0;
             return count;
         }
 
@@ -432,7 +436,8 @@ namespace ArcherStudio.SDK.Core.Editor {
                           ?? assembly.GetType($"ArcherStudio.SDK.IAP.{configName}")
                           ?? assembly.GetType($"ArcherStudio.SDK.RemoteConfig.{configName}")
                           ?? assembly.GetType($"ArcherStudio.SDK.Push.{configName}")
-                          ?? assembly.GetType($"ArcherStudio.SDK.DeepLink.{configName}");
+                          ?? assembly.GetType($"ArcherStudio.SDK.DeepLink.{configName}")
+                          ?? assembly.GetType($"ArcherStudio.SDK.TestLab.{configName}");
                 if (configType != null) break;
             }
             if (configType == null) return false;
@@ -446,7 +451,7 @@ namespace ArcherStudio.SDK.Core.Editor {
                 coreConfig.AppId = _appId; coreConfig.EnableConsent = toggles.Consent; coreConfig.EnableTracking = toggles.Tracking;
                 coreConfig.EnableAnalytics = toggles.Analytics; coreConfig.EnableAds = toggles.Ads; coreConfig.EnableIAP = toggles.IAP;
                 coreConfig.EnableRemoteConfig = toggles.RemoteConfig;
-                coreConfig.EnablePush = toggles.Push; coreConfig.EnableDeepLink = toggles.DeepLink;
+                coreConfig.EnablePush = toggles.Push; coreConfig.EnableDeepLink = toggles.DeepLink; coreConfig.EnableTestLab = toggles.TestLab;
                 EditorUtility.SetDirty(coreConfig);
             }
 

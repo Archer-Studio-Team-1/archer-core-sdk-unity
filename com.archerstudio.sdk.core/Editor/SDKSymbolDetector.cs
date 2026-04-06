@@ -89,6 +89,9 @@ namespace ArcherStudio.SDK.Core.Editor {
 
             // Social
             new SDKSymbolEntry("HAS_FACEBOOK_SDK",           "Facebook.Unity.FB",                          "Facebook / Meta SDK"),
+
+            // Testing
+            new SDKSymbolEntry("HAS_TESTLAB",                "ArcherStudio.SDK.TestLab.GameLoopHandler",   "Firebase Test Lab"),
         };
 
         // ═══════════════════════════════════════════════════════

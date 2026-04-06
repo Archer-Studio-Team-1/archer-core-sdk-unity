@@ -1,0 +1,16 @@
+{
+  "name": "ArcherStudio.SDK.TestLab",
+  "rootNamespace": "ArcherStudio.SDK.TestLab",
+  "references": [
+    "ArcherStudio.SDK.Core"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false
+}
