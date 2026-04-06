@@ -63,6 +63,18 @@ namespace ArcherStudio.SDK.Core.Editor {
                 };
                 entry.IsLocal = entry.CurrentSource.StartsWith("file:");
                 entry.IsGit = entry.CurrentSource.Contains("github.com") || entry.CurrentSource.Contains(".git");
+
+                // Parse git ref from source URL (after #)
+                if (entry.IsGit) {
+                    int hashIndex = entry.CurrentSource.LastIndexOf('#');
+                    entry.GitRef = hashIndex >= 0 ? entry.CurrentSource.Substring(hashIndex + 1) : _gitRef;
+                } else {
+                    entry.GitRef = _gitRef;
+                }
+
+                // Read installed version from package.json
+                entry.InstalledVersion = ReadPackageVersion(entry.Name);
+
                 _packages.Add(entry);
             }
 
@@ -200,6 +212,16 @@ namespace ArcherStudio.SDK.Core.Editor {
         private void DrawPackageList() {
             EditorGUILayout.LabelField($"Packages ({_packages.Count})", EditorStyles.boldLabel);
 
+            // Table header
+            EditorGUILayout.BeginHorizontal(EditorStyles.toolbar);
+            GUILayout.Label("", GUILayout.Width(16));
+            GUILayout.Label("Package", EditorStyles.miniLabel, GUILayout.Width(100));
+            GUILayout.Label("Version", EditorStyles.miniLabel, GUILayout.Width(55));
+            GUILayout.Label("Git Ref", EditorStyles.miniLabel, GUILayout.Width(90));
+            GUILayout.Label("Source", EditorStyles.miniLabel);
+            GUILayout.Label("", GUILayout.Width(110));
+            EditorGUILayout.EndHorizontal();
+
             foreach (var pkg in _packages) {
                 EditorGUILayout.BeginHorizontal(EditorStyles.helpBox);
 
@@ -212,21 +234,61 @@ namespace ArcherStudio.SDK.Core.Editor {
 
                 // Package name (short)
                 string shortName = pkg.Name.Replace(PackagePrefix, "");
-                EditorGUILayout.LabelField(shortName, EditorStyles.boldLabel, GUILayout.Width(110));
+                EditorGUILayout.LabelField(shortName, EditorStyles.boldLabel, GUILayout.Width(100));
+
+                // Installed version
+                EditorGUILayout.LabelField(pkg.InstalledVersion, EditorStyles.miniLabel, GUILayout.Width(55));
+
+                // Per-package git ref (editable)
+                var newRef = EditorGUILayout.TextField(pkg.GitRef, GUILayout.Width(90));
+                if (newRef != pkg.GitRef) {
+                    pkg.GitRef = newRef;
+                }
 
                 // Current source (truncated)
                 string displaySource = pkg.CurrentSource;
-                if (displaySource.Length > 60) displaySource = "..." + displaySource.Substring(displaySource.Length - 57);
+                if (displaySource.Length > 40) displaySource = "..." + displaySource.Substring(displaySource.Length - 37);
                 EditorGUILayout.LabelField(displaySource, EditorStyles.miniLabel);
 
-                // Individual toggle button
+                // Action buttons
+                if (pkg.IsGit && pkg.GitRef != ExtractGitRef(pkg.CurrentSource)) {
+                    // Ref changed -> show Apply button
+                    GUI.backgroundColor = new Color(0.9f, 0.7f, 0.2f);
+                    if (GUILayout.Button("Apply Ref", GUILayout.Width(70))) {
+                        SwitchSingle(pkg, toLocal: false, gitRefOverride: pkg.GitRef);
+                    }
+                    GUI.backgroundColor = Color.white;
+                } else {
+                    GUILayout.Space(74);
+                }
+
+                // Toggle source button
                 string toggleLabel = pkg.IsLocal ? "-> Git" : "-> Local";
-                if (GUILayout.Button(toggleLabel, GUILayout.Width(65))) {
-                    SwitchSingle(pkg, !pkg.IsLocal);
+                if (GUILayout.Button(toggleLabel, GUILayout.Width(60))) {
+                    SwitchSingle(pkg, !pkg.IsLocal, gitRefOverride: pkg.GitRef);
                 }
 
                 EditorGUILayout.EndHorizontal();
             }
+
+            // Bulk ref update
+            EditorGUILayout.Space(8);
+            EditorGUILayout.BeginHorizontal();
+            if (GUILayout.Button("Set All Refs to Global", GUILayout.Height(22))) {
+                foreach (var pkg in _packages) pkg.GitRef = _gitRef;
+                Repaint();
+            }
+            GUI.backgroundColor = new Color(0.9f, 0.7f, 0.2f);
+            if (GUILayout.Button("Apply All Changed Refs", GUILayout.Height(22))) {
+                ApplyAllRefs();
+            }
+            GUI.backgroundColor = Color.white;
+            EditorGUILayout.EndHorizontal();
+        }
+
+        private static string ExtractGitRef(string source) {
+            int hashIndex = source.LastIndexOf('#');
+            return hashIndex >= 0 ? source.Substring(hashIndex + 1) : "";
         }
 
         // ─── Switch Logic ───
@@ -242,7 +304,7 @@ namespace ArcherStudio.SDK.Core.Editor {
             foreach (var pkg in _packages) {
                 string newSource = toLocal
                     ? BuildLocalSource(pkg.Name)
-                    : BuildGitSource(pkg.Name);
+                    : BuildGitSource(pkg.Name, pkg.GitRef);
 
                 content = content.Replace(
                     $"\"{pkg.Name}\": \"{pkg.CurrentSource}\"",
@@ -258,20 +320,53 @@ namespace ArcherStudio.SDK.Core.Editor {
             UnityEditor.PackageManager.Client.Resolve();
         }
 
-        private void SwitchSingle(PackageEntry pkg, bool toLocal) {
+        private void SwitchSingle(PackageEntry pkg, bool toLocal, string gitRefOverride = null) {
             if (!File.Exists(_manifestPath)) return;
 
             var content = File.ReadAllText(_manifestPath);
             string newSource = toLocal
                 ? BuildLocalSource(pkg.Name)
-                : BuildGitSource(pkg.Name);
+                : BuildGitSource(pkg.Name, gitRefOverride ?? pkg.GitRef);
 
             content = content.Replace(
                 $"\"{pkg.Name}\": \"{pkg.CurrentSource}\"",
                 $"\"{pkg.Name}\": \"{newSource}\"");
 
             File.WriteAllText(_manifestPath, content);
-            Debug.Log($"[{Tag}] Switched {pkg.Name} to {(toLocal ? "LOCAL" : "GIT")}");
+            Debug.Log($"[{Tag}] Switched {pkg.Name} to {(toLocal ? "LOCAL" : $"GIT ({gitRefOverride ?? pkg.GitRef})")}");
+
+            AssetDatabase.Refresh();
+            Refresh();
+
+            UnityEditor.PackageManager.Client.Resolve();
+        }
+
+        private void ApplyAllRefs() {
+            if (!File.Exists(_manifestPath)) return;
+
+            var content = File.ReadAllText(_manifestPath);
+            int changed = 0;
+
+            foreach (var pkg in _packages) {
+                if (!pkg.IsGit) continue;
+
+                string currentRef = ExtractGitRef(pkg.CurrentSource);
+                if (currentRef == pkg.GitRef) continue;
+
+                string newSource = BuildGitSource(pkg.Name, pkg.GitRef);
+                content = content.Replace(
+                    $"\"{pkg.Name}\": \"{pkg.CurrentSource}\"",
+                    $"\"{pkg.Name}\": \"{newSource}\"");
+                changed++;
+            }
+
+            if (changed == 0) {
+                EditorUtility.DisplayDialog("No Changes", "All git refs are already up to date.", "OK");
+                return;
+            }
+
+            File.WriteAllText(_manifestPath, content);
+            Debug.Log($"[{Tag}] Updated {changed} package git refs");
 
             AssetDatabase.Refresh();
             Refresh();
@@ -283,11 +378,29 @@ namespace ArcherStudio.SDK.Core.Editor {
             return $"file:{_localRelativePath}/{packageName}";
         }
 
-        private string BuildGitSource(string packageName) {
-            return $"{_gitRepoUrl}?path={packageName}#{_gitRef}";
+        private string BuildGitSource(string packageName, string gitRef = null) {
+            return $"{_gitRepoUrl}?path={packageName}#{gitRef ?? _gitRef}";
         }
 
         // ─── Helpers ───
+
+        private static string ReadPackageVersion(string packageName) {
+            // Try resolved package in Library
+            string resolvedPath = Path.GetFullPath($"Packages/{packageName}/package.json");
+            // Try also the Library cache
+            if (!File.Exists(resolvedPath)) {
+                resolvedPath = Path.GetFullPath($"Library/PackageCache/{packageName}/package.json");
+            }
+            if (!File.Exists(resolvedPath)) return "?";
+
+            try {
+                var json = File.ReadAllText(resolvedPath);
+                var versionMatch = Regex.Match(json, @"""version""\s*:\s*""([^""]+)""");
+                return versionMatch.Success ? versionMatch.Groups[1].Value : "?";
+            } catch {
+                return "?";
+            }
+        }
 
         private static string GetRelativePath(string fromPath, string toPath) {
             var fromUri = new Uri(fromPath.TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar);
@@ -302,6 +415,8 @@ namespace ArcherStudio.SDK.Core.Editor {
             public string CurrentSource;
             public bool IsLocal;
             public bool IsGit;
+            public string GitRef;
+            public string InstalledVersion;
         }
     }
 }
