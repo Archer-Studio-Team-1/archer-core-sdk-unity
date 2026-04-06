@@ -39,7 +39,7 @@ namespace ArcherStudio.SDK.Core.Editor {
 
         private void OnEnable() {
             _gitRepoUrl = EditorPrefs.GetString(PrefsKeyGitUrl, "https://github.com/Archer-Studio-Team-1/archer-core-sdk-unity.git");
-            _gitRef = EditorPrefs.GetString(PrefsKeyGitRef, "v0.1.4");
+            _gitRef = EditorPrefs.GetString(PrefsKeyGitRef, "v0.1.5");
             _localRelativePath = EditorPrefs.GetString(PrefsKeyLocalPath, "../../archer-core-sdk-unity");
             _manifestPath = Path.GetFullPath("Packages/manifest.json");
             Refresh();
