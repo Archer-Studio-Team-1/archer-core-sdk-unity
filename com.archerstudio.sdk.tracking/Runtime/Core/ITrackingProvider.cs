@@ -8,6 +8,7 @@ namespace ArcherStudio.SDK.Tracking {
     /// Extended from legacy ITrackingProvider with ProviderId and consent support.
     /// </summary>
     public interface ITrackingProvider {
+        
         string ProviderId { get; }
         void Initialize(Action<bool> onInitialized = null);
 

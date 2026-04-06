@@ -296,7 +296,7 @@ namespace ArcherStudio.SDK.Tracking {
             #if UNITY_EDITOR || DEVELOPMENT_BUILD
             bool verbose = _config != null ? _config.VerboseLogging : true;
             if (verbose) {
-                Debug.Log($"<color=cyan>[Tracking] IAPRevenue: {productId} " +
+                Debug.Log($"<color=cyan>[Tracking] Internal - IAPRevenue: {productId} " +
                           $"{currency} {revenue:F2} txn={transactionId}</color>");
             }
             #endif

@@ -414,7 +414,7 @@ namespace ArcherStudio.SDK.Tracking {
         /// Combines verification + revenue event recording in one call.
         /// See: https://dev.adjust.com/en/sdk/unity/features/purchase-verification
         /// </summary>
-        public void VerifyAndTrackPlayStorePurchase(
+        private void VerifyAndTrackPlayStorePurchase(
             string eventToken, double revenue, string currency,
             string productId, string purchaseToken,
             Action<string, int, string> onResult = null) {
@@ -449,7 +449,7 @@ namespace ArcherStudio.SDK.Tracking {
         /// Verify an App Store purchase without recording a revenue event.
         /// Use this when you only need verification status.
         /// </summary>
-        public void VerifyAppStorePurchase(
+        private void VerifyAppStorePurchase(
             string productId, string transactionId,
             Action<string, int, string> onResult = null) {
             #if HAS_ADJUST_SDK && UNITY_IOS

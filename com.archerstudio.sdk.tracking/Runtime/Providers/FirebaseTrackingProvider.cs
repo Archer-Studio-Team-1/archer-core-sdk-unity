@@ -149,7 +149,11 @@ namespace ArcherStudio.SDK.Tracking {
             #if HAS_FIREBASE_SDK
             if (!_isReady) return;
 
-            string storeName = Application.platform == RuntimePlatform.Android ? "GooglePlay" : "Other";
+            string storeName = Application.platform switch {
+                RuntimePlatform.IPhonePlayer => "Apple",
+                RuntimePlatform.Android => "GooglePlay",
+                _ => "Other"
+            };
             Parameter[] purchaseParameters = {
                 new Parameter(FirebaseAnalytics.ParameterTransactionID, transactionId),
                 new Parameter(FirebaseAnalytics.ParameterItemID, productId),
