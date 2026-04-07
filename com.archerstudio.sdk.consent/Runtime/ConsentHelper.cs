@@ -1,13 +1,22 @@
+using ArcherStudio.SDK.Core;
 using UnityEngine;
 
 namespace ArcherStudio.SDK.Consent {
 
     /// <summary>
-    /// Utility to read IAB TCF v2.3 consent signals from PlayerPrefs.
+    /// Utility to read IAB TCF v2.3 consent signals.
     /// UMP writes these values after the user responds to the consent dialog.
     /// Purpose and Vendor IDs are 1-based per IAB spec.
+    ///
+    /// IMPORTANT: On Android, UMP writes to the default SharedPreferences,
+    /// NOT Unity's PlayerPrefs (which uses a separate file). This class reads
+    /// from the correct source per platform:
+    ///   Android → SharedPreferences via JNI
+    ///   iOS     → NSUserDefaults (same as PlayerPrefs)
+    ///   Editor  → PlayerPrefs (for testing)
     /// </summary>
     public static class ConsentHelper {
+        private const string Tag = "ConsentHelper";
 
         /// <summary>
         /// Check if a specific TCF Purpose has been granted consent.
@@ -21,7 +30,7 @@ namespace ArcherStudio.SDK.Consent {
         ///  10 = Product development
         /// </summary>
         public static bool IsPurposeGranted(int purposeId) {
-            string pConsents = PlayerPrefs.GetString("IABTCF_PurposeConsents", "");
+            string pConsents = ReadTcfString("IABTCF_PurposeConsents");
             if (purposeId > 0 && purposeId <= pConsents.Length) {
                 return pConsents[purposeId - 1] == '1';
             }
@@ -40,7 +49,7 @@ namespace ArcherStudio.SDK.Consent {
         ///   35 = Vungle
         /// </summary>
         public static bool IsVendorGranted(int vendorId) {
-            string vConsents = PlayerPrefs.GetString("IABTCF_VendorConsents", "");
+            string vConsents = ReadTcfString("IABTCF_VendorConsents");
             if (vendorId > 0 && vendorId <= vConsents.Length) {
                 return vConsents[vendorId - 1] == '1';
             }
@@ -52,7 +61,7 @@ namespace ArcherStudio.SDK.Consent {
         /// Can be passed to SDKs that support direct TCF ingestion (e.g., Adjust).
         /// </summary>
         public static string GetTcString() {
-            return PlayerPrefs.GetString("IABTCF_tcString", "");
+            return ReadTcfString("IABTCF_tcString");
         }
 
         /// <summary>
@@ -60,7 +69,60 @@ namespace ArcherStudio.SDK.Consent {
         /// 0 = no, 1 = yes.
         /// </summary>
         public static bool IsGdprApplies() {
-            return PlayerPrefs.GetInt("IABTCF_gdprApplies", 0) == 1;
+            return ReadTcfInt("IABTCF_gdprApplies", 0) == 1;
         }
+
+        /// <summary>
+        /// Read a string value from the TCF storage.
+        /// Android: default SharedPreferences (where UMP writes).
+        /// iOS/Editor: NSUserDefaults / PlayerPrefs.
+        /// </summary>
+        private static string ReadTcfString(string key) {
+#if UNITY_ANDROID && !UNITY_EDITOR
+            return ReadAndroidSharedPrefsString(key, "");
+#else
+            return PlayerPrefs.GetString(key, "");
+#endif
+        }
+
+        /// <summary>
+        /// Read an int value from the TCF storage.
+        /// </summary>
+        private static int ReadTcfInt(string key, int defaultValue) {
+#if UNITY_ANDROID && !UNITY_EDITOR
+            return ReadAndroidSharedPrefsInt(key, defaultValue);
+#else
+            return PlayerPrefs.GetInt(key, defaultValue);
+#endif
+        }
+
+#if UNITY_ANDROID && !UNITY_EDITOR
+        private static AndroidJavaObject GetDefaultSharedPreferences() {
+            using var unityPlayer = new AndroidJavaClass("com.unity3d.player.UnityPlayer");
+            using var activity = unityPlayer.GetStatic<AndroidJavaObject>("currentActivity");
+            string prefsName = activity.Call<string>("getPackageName") + "_preferences";
+            return activity.Call<AndroidJavaObject>("getSharedPreferences", prefsName, 0);
+        }
+
+        private static string ReadAndroidSharedPrefsString(string key, string defaultValue) {
+            try {
+                using var prefs = GetDefaultSharedPreferences();
+                return prefs.Call<string>("getString", key, defaultValue);
+            } catch (System.Exception e) {
+                SDKLogger.Warning(Tag, $"Failed to read string '{key}': {e.Message}");
+                return defaultValue;
+            }
+        }
+
+        private static int ReadAndroidSharedPrefsInt(string key, int defaultValue) {
+            try {
+                using var prefs = GetDefaultSharedPreferences();
+                return prefs.Call<int>("getInt", key, defaultValue);
+            } catch (System.Exception e) {
+                SDKLogger.Warning(Tag, $"Failed to read int '{key}': {e.Message}");
+                return defaultValue;
+            }
+        }
+#endif
     }
 }
