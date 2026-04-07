@@ -106,6 +106,13 @@ namespace ArcherStudio.SDK.Consent {
         }
 
         /// <summary>
+        /// Get raw IABTCF_PurposeConsents binary string for debug logging.
+        /// </summary>
+        public static string ReadPurposeConsentsRaw() {
+            return ReadTcfString("IABTCF_PurposeConsents");
+        }
+
+        /// <summary>
         /// Read a string value from the TCF storage.
         /// Android: default SharedPreferences (where UMP writes).
         /// iOS/Editor: NSUserDefaults / PlayerPrefs.

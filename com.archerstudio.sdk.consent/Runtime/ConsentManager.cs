@@ -200,11 +200,97 @@ namespace ArcherStudio.SDK.Consent {
         private void BroadcastConsent() {
             SDKLogger.Info(Tag, $"Broadcasting consent: {CurrentStatus}");
 
+            // Dump full debug info for device verification
+            DumpConsentDebugInfo(CurrentStatus);
+
             // Apply consent to Facebook SDK (manifest defaults are false)
             ApplyFacebookConsent(CurrentStatus);
 
             SDKEventBus.Publish(new ConsentChangedEvent(CurrentStatus));
         }
+
+        /// <summary>
+        /// Dump all consent signals in a single block for easy device verification.
+        /// Covers: ConsentStatus, TCF strings, UMP consent mode, Firebase mapping, Facebook state, Adjust DMA.
+        /// Filter logcat/console by "[SDK:Consent]" to see this block.
+        /// </summary>
+        private static void DumpConsentDebugInfo(ConsentStatus status) {
+            SDKLogger.Info(Tag, "╔══════════════════════════════════════════════════════════╗");
+            SDKLogger.Info(Tag, "║           CONSENT DEBUG DUMP (device verification)       ║");
+            SDKLogger.Info(Tag, "╠══════════════════════════════════════════════════════════╣");
+
+            // 1. ConsentStatus fields
+            SDKLogger.Info(Tag, "║ ── ConsentStatus ──");
+            SDKLogger.Info(Tag, $"║   Source:              {status.Source}");
+            SDKLogger.Info(Tag, $"║   CanShowPersonalizedAds: {status.CanShowPersonalizedAds}");
+            SDKLogger.Info(Tag, $"║   CanCollectAnalytics:    {status.CanCollectAnalytics}");
+            SDKLogger.Info(Tag, $"║   CanTrackAttribution:    {status.CanTrackAttribution}");
+            SDKLogger.Info(Tag, $"║   CanStoreAdData:         {status.CanStoreAdData}");
+            SDKLogger.Info(Tag, $"║   IsEeaUser:              {status.IsEeaUser}");
+            SDKLogger.Info(Tag, $"║   HasAttConsent:           {status.HasAttConsent}");
+            SDKLogger.Info(Tag, $"║   IsDoNotSell:             {status.IsDoNotSell}");
+
+            // 2. Firebase Consent Mode v2 mapping
+            SDKLogger.Info(Tag, "║ ── Firebase Consent Mode v2 (will be set) ──");
+            SDKLogger.Info(Tag, $"║   AD_STORAGE:          {Gd(status.CanStoreAdData)}");
+            SDKLogger.Info(Tag, $"║   ANALYTICS_STORAGE:   {Gd(status.CanCollectAnalytics)}");
+            SDKLogger.Info(Tag, $"║   AD_USER_DATA:        {Gd(status.CanTrackAttribution)}");
+            SDKLogger.Info(Tag, $"║   AD_PERSONALIZATION:  {Gd(status.CanShowPersonalizedAds)}");
+
+            // 3. Facebook SDK mapping
+            SDKLogger.Info(Tag, "║ ── Facebook SDK (will be set) ──");
+            SDKLogger.Info(Tag, $"║   AutoLogAppEvents:      {status.CanCollectAnalytics}");
+            SDKLogger.Info(Tag, $"║   AdvertiserIDCollection: {status.CanTrackAttribution}");
+            SDKLogger.Info(Tag, $"║   LDU (DataProcessing):   {(status.IsDoNotSell ? "LDU enabled" : "disabled")}");
+            #if UNITY_IOS
+            SDKLogger.Info(Tag, $"║   AdvertiserTracking:     {status.HasAttConsent}");
+            #endif
+
+            // 4. MAX SDK mapping
+            SDKLogger.Info(Tag, "║ ── AppLovin MAX (will be set) ──");
+            SDKLogger.Info(Tag, $"║   HasUserConsent:         {status.CanShowPersonalizedAds}");
+            SDKLogger.Info(Tag, $"║   DoNotSell:              {status.IsDoNotSell}");
+            SDKLogger.Info(Tag, $"║   facebook_limited_data_use: {(status.CanShowPersonalizedAds ? "false" : "true")}");
+
+            // 5. Adjust DMA mapping
+            SDKLogger.Info(Tag, "║ ── Adjust DMA (will be set) ──");
+            SDKLogger.Info(Tag, $"║   eea:                 {(status.IsEeaUser ? "1" : "0")}");
+            SDKLogger.Info(Tag, $"║   ad_personalization:  {(status.CanShowPersonalizedAds ? "1" : "0")}");
+            SDKLogger.Info(Tag, $"║   ad_user_data:        {(status.CanTrackAttribution ? "1" : "0")}");
+            SDKLogger.Info(Tag, $"║   ad_storage:          {(status.CanStoreAdData ? "1" : "0")}");
+            SDKLogger.Info(Tag, $"║   npa:                 {(status.CanShowPersonalizedAds ? "0" : "1")}");
+            SDKLogger.Info(Tag, $"║   MeasurementConsent:  {status.CanCollectAnalytics}");
+
+            // 6. Raw TCF data (read from correct storage per platform)
+            SDKLogger.Info(Tag, "║ ── Raw TCF Data ──");
+            string tcString = ConsentHelper.GetTcString();
+            SDKLogger.Info(Tag, $"║   IABTCF_tcString:       {(string.IsNullOrEmpty(tcString) ? "(empty)" : tcString.Substring(0, System.Math.Min(tcString.Length, 40)) + "...")}");
+            SDKLogger.Info(Tag, $"║   IABTCF_gdprApplies:    {ConsentHelper.IsGdprApplies()}");
+
+            string purposeConsents = ConsentHelper.ReadPurposeConsentsRaw();
+            SDKLogger.Info(Tag, $"║   IABTCF_PurposeConsents: {(string.IsNullOrEmpty(purposeConsents) ? "(empty)" : purposeConsents)}");
+            SDKLogger.Info(Tag, $"║     Purpose 1 (storage):        {ConsentHelper.IsPurposeGranted(1)}");
+            SDKLogger.Info(Tag, $"║     Purpose 3 (ads profile):    {ConsentHelper.IsPurposeGranted(3)}");
+            SDKLogger.Info(Tag, $"║     Purpose 4 (select ads):     {ConsentHelper.IsPurposeGranted(4)}");
+            SDKLogger.Info(Tag, $"║     Purpose 7 (ad measurement): {ConsentHelper.IsPurposeGranted(7)}");
+            SDKLogger.Info(Tag, $"║     Purpose 9 (market research):{ConsentHelper.IsPurposeGranted(9)}");
+            SDKLogger.Info(Tag, $"║     Purpose 10 (dev/improve):   {ConsentHelper.IsPurposeGranted(10)}");
+
+            SDKLogger.Info(Tag, "║ ── Key Vendor Consent ──");
+            SDKLogger.Info(Tag, $"║     Vendor 31  (Meta/Facebook):  {ConsentHelper.IsVendorGranted(31)}");
+            SDKLogger.Info(Tag, $"║     Vendor 32  (Unity Ads):      {ConsentHelper.IsVendorGranted(32)}");
+            SDKLogger.Info(Tag, $"║     Vendor 35  (Vungle):         {ConsentHelper.IsVendorGranted(35)}");
+            SDKLogger.Info(Tag, $"║     Vendor 702 (Mintegral):      {ConsentHelper.IsVendorGranted(702)}");
+            SDKLogger.Info(Tag, $"║     Vendor 755 (Google Ads):     {ConsentHelper.IsVendorGranted(755)}");
+
+            string acString = ConsentHelper.GetAdditionalConsentString();
+            SDKLogger.Info(Tag, $"║   IABTCF_AddtlConsent:   {(string.IsNullOrEmpty(acString) ? "(empty)" : acString)}");
+            SDKLogger.Info(Tag, $"║     AC Vendor 311 (AppLovin):    {ConsentHelper.IsAdditionalConsentVendorGranted(311)}");
+
+            SDKLogger.Info(Tag, "╚══════════════════════════════════════════════════════════╝");
+        }
+
+        private static string Gd(bool granted) => granted ? "GRANTED" : "DENIED";
 
         /// <summary>
         /// Enable/disable Facebook data collection based on consent.
