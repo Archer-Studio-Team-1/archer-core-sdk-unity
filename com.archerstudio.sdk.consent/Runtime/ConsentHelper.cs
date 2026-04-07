@@ -40,9 +40,10 @@ namespace ArcherStudio.SDK.Consent {
         /// <summary>
         /// Check if a specific TCF Vendor has been granted consent.
         /// Index is 1-based per IAB spec.
-        /// Key vendors:
+        /// Only works for vendors in the Global Vendor List (GVL).
+        /// For Additional Consent vendors (e.g. AppLovin ID 311), use IsAdditionalConsentVendorGranted().
+        /// Key TCF vendors:
         ///   31 = Meta (Facebook)
-        ///  311 = AppLovin (Additional Consent)
         ///  755 = Google Advertising Products
         ///   32 = Unity Ads
         ///  702 = Mintegral
@@ -57,11 +58,43 @@ namespace ArcherStudio.SDK.Consent {
         }
 
         /// <summary>
+        /// Check if a vendor in Google's Additional Consent (AC) list has been granted consent.
+        /// AC vendors are NOT in the TCF Global Vendor List, stored separately in IABTCF_AddtlConsent.
+        /// Format: "2~311.755.1234" (version~dot-separated vendor IDs)
+        /// Key AC vendors:
+        ///  311 = AppLovin
+        /// </summary>
+        public static bool IsAdditionalConsentVendorGranted(int vendorId) {
+            string acString = ReadTcfString("IABTCF_AddtlConsent");
+            if (string.IsNullOrEmpty(acString)) return false;
+
+            // Format: "2~311.755.1234" → split on '~', take second part, split on '.'
+            int tildeIndex = acString.IndexOf('~');
+            if (tildeIndex < 0 || tildeIndex >= acString.Length - 1) return false;
+
+            string vendorsPart = acString.Substring(tildeIndex + 1);
+            string vendorStr = vendorId.ToString();
+
+            foreach (string id in vendorsPart.Split('.')) {
+                if (id == vendorStr) return true;
+            }
+            return false;
+        }
+
+        /// <summary>
         /// Get the raw IAB TCF TC String.
         /// Can be passed to SDKs that support direct TCF ingestion (e.g., Adjust).
         /// </summary>
         public static string GetTcString() {
             return ReadTcfString("IABTCF_tcString");
+        }
+
+        /// <summary>
+        /// Get the Additional Consent (AC) string.
+        /// Contains consent for non-TCF vendors (Google's AC spec).
+        /// </summary>
+        public static string GetAdditionalConsentString() {
+            return ReadTcfString("IABTCF_AddtlConsent");
         }
 
         /// <summary>
