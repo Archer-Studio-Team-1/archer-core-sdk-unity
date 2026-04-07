@@ -190,8 +190,7 @@ namespace ArcherStudio.SDK.Tracking {
             // SDK is now fully started — safe to call TrackMeasurementConsent
             if (!_sdkStarted) {
                 _sdkStarted = true;
-                // Adjust.TrackMeasurementConsent(_pendingMeasurementConsent.CanCollectAnalytics);
-                Adjust.TrackMeasurementConsent(true);
+                Adjust.TrackMeasurementConsent(_pendingMeasurementConsent.CanCollectAnalytics);
                 SDKLogger.Info("Adjust",
                     $"  MeasurementConsent={_pendingMeasurementConsent.CanCollectAnalytics} (sent on session start)");
             }
@@ -661,8 +660,7 @@ namespace ArcherStudio.SDK.Tracking {
             SendThirdPartySharing(consent);
 
             if (_sdkStarted) {
-                // Adjust.TrackMeasurementConsent(consent.CanCollectAnalytics);
-                Adjust.TrackMeasurementConsent(true);
+                Adjust.TrackMeasurementConsent(consent.CanCollectAnalytics);
             }
             #endif
         }
