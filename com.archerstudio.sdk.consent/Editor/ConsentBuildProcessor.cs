@@ -41,13 +41,23 @@ namespace ArcherStudio.SDK.Consent.Editor {
             SetBoolIfMissing(root, "GOOGLE_ANALYTICS_DEFAULT_ALLOW_AD_USER_DATA", false);
             SetBoolIfMissing(root, "GOOGLE_ANALYTICS_DEFAULT_ALLOW_AD_PERSONALIZATION_SIGNALS", false);
 
+            // iOS ATT: NSUserTrackingUsageDescription (required for ATT prompt)
+            SetStringIfMissing(root, "NSUserTrackingUsageDescription",
+                "This app uses your data to provide personalized ads and improve your experience.");
+
             plist.WriteToFile(plistPath);
-            Debug.Log("[Consent] iOS Info.plist: Google Analytics consent defaults set to false");
+            Debug.Log("[Consent] iOS Info.plist: consent defaults + ATT description configured");
         }
 
         private static void SetBoolIfMissing(PlistElementDict root, string key, bool value) {
             if (root[key] == null) {
                 root.SetBoolean(key, value);
+            }
+        }
+
+        private static void SetStringIfMissing(PlistElementDict root, string key, string value) {
+            if (root[key] == null) {
+                root.SetString(key, value);
             }
         }
 #endif

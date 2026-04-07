@@ -45,6 +45,8 @@ namespace ArcherStudio.SDK.Ads {
             // MUST set consent flags BEFORE InitializeSdk()
             MaxSdk.SetHasUserConsent(_lastConsent.CanShowPersonalizedAds);
             MaxSdk.SetDoNotSell(_lastConsent.IsDoNotSell);
+            // Facebook adapter LDU via MAX metadata
+            MaxSdk.SetMetaData("facebook_limited_data_use", _lastConsent.CanShowPersonalizedAds ? "false" : "true");
             
             // ─── COPPA / Age Restriction ───
             var trackingConfig = Resources.Load<ArcherStudio.SDK.Tracking.TrackingConfig>("TrackingConfig");
@@ -82,6 +84,7 @@ namespace ArcherStudio.SDK.Ads {
             #if HAS_APPLOVIN_MAX_SDK
             MaxSdk.SetHasUserConsent(consent.CanShowPersonalizedAds);
             MaxSdk.SetDoNotSell(consent.IsDoNotSell);
+            MaxSdk.SetMetaData("facebook_limited_data_use", consent.CanShowPersonalizedAds ? "false" : "true");
             SDKLogger.Debug(Tag,
                 $"Consent updated: personalized={consent.CanShowPersonalizedAds}, " +
                 $"doNotSell={consent.IsDoNotSell}");
