@@ -246,20 +246,43 @@ namespace ArcherStudio.SDK.Consent {
             SDKLogger.Info(Tag, $"║   AdvertiserTracking:     {status.HasAttConsent}");
             #endif
 
-            // 4. MAX SDK mapping
-            SDKLogger.Info(Tag, "║ ── AppLovin MAX (will be set) ──");
-            SDKLogger.Info(Tag, $"║   HasUserConsent:         {status.CanShowPersonalizedAds}");
-            SDKLogger.Info(Tag, $"║   DoNotSell:              {status.IsDoNotSell}");
-            SDKLogger.Info(Tag, $"║   facebook_limited_data_use: {(status.CanShowPersonalizedAds ? "false" : "true")}");
+            // 4. MAX SDK — actual state from SDK
+            SDKLogger.Info(Tag, "║ ── AppLovin MAX ──");
+            #if HAS_APPLOVIN_MAX_SDK
+            SDKLogger.Info(Tag, $"║   HasUserConsent (actual):  {MaxSdk.HasUserConsent()}");
+            SDKLogger.Info(Tag, $"║   IsUserConsentSet:         {MaxSdk.IsUserConsentSet()}");
+            SDKLogger.Info(Tag, $"║   IsDoNotSell (actual):     {MaxSdk.IsDoNotSell()}");
+            SDKLogger.Info(Tag, $"║   IsDoNotSellSet:           {MaxSdk.IsDoNotSellSet()}");
+            #else
+            SDKLogger.Info(Tag, $"║   (MAX SDK not available)");
+            #endif
+            SDKLogger.Info(Tag, $"║   Will set HasUserConsent:  {status.CanShowPersonalizedAds}");
+            SDKLogger.Info(Tag, $"║   Will set DoNotSell:       {status.IsDoNotSell}");
 
-            // 5. Adjust DMA mapping
-            SDKLogger.Info(Tag, "║ ── Adjust DMA (will be set) ──");
-            SDKLogger.Info(Tag, $"║   eea:                 {(status.IsEeaUser ? "1" : "0")}");
-            SDKLogger.Info(Tag, $"║   ad_personalization:  {(status.CanShowPersonalizedAds ? "1" : "0")}");
-            SDKLogger.Info(Tag, $"║   ad_user_data:        {(status.CanTrackAttribution ? "1" : "0")}");
-            SDKLogger.Info(Tag, $"║   ad_storage:          {(status.CanStoreAdData ? "1" : "0")}");
-            SDKLogger.Info(Tag, $"║   npa:                 {(status.CanShowPersonalizedAds ? "0" : "1")}");
-            SDKLogger.Info(Tag, $"║   MeasurementConsent:  {status.CanCollectAnalytics}");
+            // 5. Facebook SDK — actual state
+            SDKLogger.Info(Tag, "║ ── Facebook SDK ──");
+            #if HAS_FACEBOOK_SDK
+            SDKLogger.Info(Tag, $"║   FB.IsInitialized:          {Facebook.Unity.FB.IsInitialized}");
+            #else
+            SDKLogger.Info(Tag, $"║   (Facebook SDK not available)");
+            #endif
+            SDKLogger.Info(Tag, $"║   Will set AutoLogAppEvents:      {status.CanCollectAnalytics}");
+            SDKLogger.Info(Tag, $"║   Will set AdvertiserIDCollection: {status.CanTrackAttribution}");
+            SDKLogger.Info(Tag, $"║   Will set LDU:                    {(status.IsDoNotSell ? "LDU enabled" : "disabled")}");
+            #if UNITY_IOS
+            SDKLogger.Info(Tag, $"║   Will set AdvertiserTracking:     {status.HasAttConsent}");
+            #endif
+
+            // 6. Adjust DMA mapping
+            SDKLogger.Info(Tag, "║ ── Adjust DMA ──");
+            SDKLogger.Info(Tag, $"║   google_dma eea:                 {(status.IsEeaUser ? "1" : "0")}");
+            SDKLogger.Info(Tag, $"║   google_dma ad_personalization:  {(status.CanShowPersonalizedAds ? "1" : "0")}");
+            SDKLogger.Info(Tag, $"║   google_dma ad_user_data:        {(status.CanTrackAttribution ? "1" : "0")}");
+            SDKLogger.Info(Tag, $"║   google_dma ad_storage:          {(status.CanStoreAdData ? "1" : "0")}");
+            SDKLogger.Info(Tag, $"║   google_dma npa:                 {(status.CanShowPersonalizedAds ? "0" : "1")}");
+            SDKLogger.Info(Tag, $"║   facebook data_processing_country: {(status.IsDoNotSell ? "1" : "0")}");
+            SDKLogger.Info(Tag, $"║   facebook data_processing_state:   {(status.IsDoNotSell ? "1000" : "0")}");
+            SDKLogger.Info(Tag, $"║   MeasurementConsent:              {status.CanCollectAnalytics}");
 
             // 6. Raw TCF data (read from correct storage per platform)
             SDKLogger.Info(Tag, "║ ── Raw TCF Data ──");

@@ -63,6 +63,7 @@ namespace ArcherStudio.SDK.Ads {
 
             MaxSdkCallbacks.OnSdkInitializedEvent += sdkConfig => {
                 SDKLogger.Info(Tag, "MAX SDK initialized.");
+                LogMaxConsentState(sdkConfig);
 
                 if (config.ShowMediationDebugger) {
                     MaxSdk.ShowMediationDebugger();
@@ -89,6 +90,27 @@ namespace ArcherStudio.SDK.Ads {
                 $"doNotSell={consent.IsDoNotSell}");
             #endif
         }
+
+        #if HAS_APPLOVIN_MAX_SDK
+        private static void LogMaxConsentState(MaxSdkBase.SdkConfiguration sdkConfig) {
+            SDKLogger.Info(Tag, "┌─── MAX Consent & Mediation State ───");
+            SDKLogger.Info(Tag, $"│ ConsentFlowGeography:  {sdkConfig.ConsentFlowUserGeography}");
+            SDKLogger.Info(Tag, $"│ ConsentDialogState:    {sdkConfig.ConsentDialogState}");
+            SDKLogger.Info(Tag, $"│ HasUserConsent:        {MaxSdk.HasUserConsent()}");
+            SDKLogger.Info(Tag, $"│ IsUserConsentSet:      {MaxSdk.IsUserConsentSet()}");
+            SDKLogger.Info(Tag, $"│ IsDoNotSell:           {MaxSdk.IsDoNotSell()}");
+            SDKLogger.Info(Tag, $"│ IsDoNotSellSet:        {MaxSdk.IsDoNotSellSet()}");
+            SDKLogger.Info(Tag, $"│ CountryCode:           {sdkConfig.CountryCode}");
+
+            // Log available mediation adapters and their versions
+            SDKLogger.Info(Tag, "│ ── Mediation Adapters ──");
+            foreach (var network in MaxSdk.GetAvailableMediatedNetworks()) {
+                SDKLogger.Info(Tag, $"│   {network.Name}: adapter={network.AdapterVersion}, sdk={network.SdkVersion}");
+            }
+
+            SDKLogger.Info(Tag, "└──────────────────────────────────");
+        }
+        #endif
 
         // ─── Banner ───
 

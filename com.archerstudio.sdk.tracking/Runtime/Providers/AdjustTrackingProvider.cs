@@ -626,8 +626,11 @@ namespace ArcherStudio.SDK.Tracking {
             Adjust.TrackThirdPartySharing(tps);
 
             SDKLogger.Info("Adjust",
-                $"  TPS: eea={eea}, ad_personalization={adPersonalization}, " +
+                $"  TPS google_dma: eea={eea}, ad_personalization={adPersonalization}, " +
                 $"ad_user_data={adUserData}, ad_storage={adStorage}, npa={npa}");
+            SDKLogger.Info("Adjust",
+                $"  TPS facebook: data_processing_options_country={fbCountry}, " +
+                $"data_processing_options_state={fbState}");
             #endif
         }
 
