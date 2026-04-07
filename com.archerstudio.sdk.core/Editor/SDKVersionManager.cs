@@ -148,19 +148,19 @@ namespace ArcherStudio.SDK.Core.Editor {
             EditorGUILayout.BeginVertical(EditorStyles.helpBox);
 
             EditorGUILayout.BeginHorizontal();
-            if (GUILayout.Button("Major", _bumpType == BumpType.Major ? EditorStyles.toolbarButtonOn : EditorStyles.toolbarButton)) {
+            if (GUILayout.Button("Major", _bumpType == BumpType.Major ? GetActiveToolbarStyle() : EditorStyles.toolbarButton)) {
                 _bumpType = BumpType.Major;
                 _newVersion = BumpVersion(_currentVersion, BumpType.Major);
             }
-            if (GUILayout.Button("Minor", _bumpType == BumpType.Minor ? EditorStyles.toolbarButtonOn : EditorStyles.toolbarButton)) {
+            if (GUILayout.Button("Minor", _bumpType == BumpType.Minor ? GetActiveToolbarStyle() : EditorStyles.toolbarButton)) {
                 _bumpType = BumpType.Minor;
                 _newVersion = BumpVersion(_currentVersion, BumpType.Minor);
             }
-            if (GUILayout.Button("Patch", _bumpType == BumpType.Patch ? EditorStyles.toolbarButtonOn : EditorStyles.toolbarButton)) {
+            if (GUILayout.Button("Patch", _bumpType == BumpType.Patch ? GetActiveToolbarStyle() : EditorStyles.toolbarButton)) {
                 _bumpType = BumpType.Patch;
                 _newVersion = BumpVersion(_currentVersion, BumpType.Patch);
             }
-            if (GUILayout.Button("Custom", _bumpType == BumpType.Custom ? EditorStyles.toolbarButtonOn : EditorStyles.toolbarButton)) {
+            if (GUILayout.Button("Custom", _bumpType == BumpType.Custom ? GetActiveToolbarStyle() : EditorStyles.toolbarButton)) {
                 _bumpType = BumpType.Custom;
             }
             EditorGUILayout.EndHorizontal();
@@ -283,6 +283,17 @@ namespace ArcherStudio.SDK.Core.Editor {
         }
 
         // ─── Helpers ───
+
+        private static GUIStyle _activeToolbarStyle;
+        private static GUIStyle GetActiveToolbarStyle() {
+            if (_activeToolbarStyle == null) {
+                _activeToolbarStyle = new GUIStyle(EditorStyles.toolbarButton) {
+                    normal = EditorStyles.toolbarButton.onNormal,
+                    fontStyle = FontStyle.Bold
+                };
+            }
+            return _activeToolbarStyle;
+        }
 
         private static string BumpVersion(string version, BumpType type) {
             var parts = version.Split('.');
