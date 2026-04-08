@@ -162,45 +162,88 @@ namespace ArcherStudio.SDK.Core {
 
         private static void DumpFacebookState(StringBuilder sb) {
             sb.AppendLine("║ ── Facebook SDK ──");
-            #if HAS_FACEBOOK_SDK
-            sb.AppendLine($"║   FB.IsInitialized:         {Facebook.Unity.FB.IsInitialized}");
-            sb.AppendLine($"║   FB.IsLoggedIn:             {Facebook.Unity.FB.IsLoggedIn}");
-            sb.AppendLine($"║   FB.AppId:                  {Facebook.Unity.FB.AppId ?? "(null)"}");
-            #else
-            sb.AppendLine("║   Facebook SDK:      NOT AVAILABLE");
-            #endif
+
+            System.Type fbType = null;
+            foreach (var asm in System.AppDomain.CurrentDomain.GetAssemblies()) {
+                fbType = asm.GetType("Facebook.Unity.FB");
+                if (fbType != null) break;
+            }
+
+            if (fbType == null) {
+                sb.AppendLine("║   Facebook SDK:      NOT AVAILABLE");
+                return;
+            }
+
+            sb.AppendLine($"║   FB.IsInitialized:  {GetStaticProp(fbType, "IsInitialized")}");
+            sb.AppendLine($"║   FB.IsLoggedIn:     {GetStaticProp(fbType, "IsLoggedIn")}");
+            sb.AppendLine($"║   FB.AppId:          {GetStaticProp(fbType, "AppId") ?? "(null)"}");
         }
 
         // ─── AppLovin MAX ───
 
         private static void DumpMaxState(StringBuilder sb) {
             sb.AppendLine("║ ── AppLovin MAX ──");
-            #if HAS_APPLOVIN_MAX_SDK
-            sb.AppendLine($"║   SDK Version:        {MaxSdk.Version}");
-            sb.AppendLine($"║   IsInitialized:      {MaxSdk.IsInitialized()}");
-            sb.AppendLine($"║   HasUserConsent:     {MaxSdk.HasUserConsent()}");
-            sb.AppendLine($"║   IsUserConsentSet:   {MaxSdk.IsUserConsentSet()}");
-            sb.AppendLine($"║   IsDoNotSell:        {MaxSdk.IsDoNotSell()}");
-            sb.AppendLine($"║   IsDoNotSellSet:     {MaxSdk.IsDoNotSellSet()}");
 
-            sb.AppendLine("║   ── Mediation Adapters ──");
-            foreach (var network in MaxSdk.GetAvailableMediatedNetworks()) {
-                sb.AppendLine($"║     {network.Name,-20} adapter={network.AdapterVersion} sdk={network.SdkVersion}");
+            // MaxSdk is in a separate assembly (com.applovin.mediation.ads), use reflection
+            var maxType = System.Type.GetType("MaxSdk, MaxSdk.Scripts")
+                       ?? System.Type.GetType("MaxSdk");
+            if (maxType == null) {
+                // Fallback: search all assemblies
+                foreach (var asm in System.AppDomain.CurrentDomain.GetAssemblies()) {
+                    maxType = asm.GetType("MaxSdk");
+                    if (maxType != null) break;
+                }
             }
-            #else
-            sb.AppendLine("║   MAX SDK:           NOT AVAILABLE");
-            #endif
+
+            if (maxType == null) {
+                sb.AppendLine("║   MAX SDK:           NOT AVAILABLE");
+                return;
+            }
+
+            var versionProp = maxType.GetProperty("Version", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static);
+            sb.AppendLine($"║   SDK Version:        {versionProp?.GetValue(null) ?? "?"}");
+
+            sb.AppendLine($"║   IsInitialized:      {CallStaticBool(maxType, "IsInitialized")}");
+            sb.AppendLine($"║   HasUserConsent:     {CallStaticBool(maxType, "HasUserConsent")}");
+            sb.AppendLine($"║   IsUserConsentSet:   {CallStaticBool(maxType, "IsUserConsentSet")}");
+            sb.AppendLine($"║   IsDoNotSell:        {CallStaticBool(maxType, "IsDoNotSell")}");
+            sb.AppendLine($"║   IsDoNotSellSet:     {CallStaticBool(maxType, "IsDoNotSellSet")}");
+
+            // Mediation adapters
+            var getNetworks = maxType.GetMethod("GetAvailableMediatedNetworks", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static);
+            if (getNetworks != null) {
+                var networks = getNetworks.Invoke(null, null) as System.Collections.IEnumerable;
+                if (networks != null) {
+                    sb.AppendLine("║   ── Mediation Adapters ──");
+                    foreach (var network in networks) {
+                        var nType = network.GetType();
+                        string name = nType.GetProperty("Name")?.GetValue(network)?.ToString() ?? "?";
+                        string adapterVer = nType.GetProperty("AdapterVersion")?.GetValue(network)?.ToString() ?? "?";
+                        string sdkVer = nType.GetProperty("SdkVersion")?.GetValue(network)?.ToString() ?? "?";
+                        sb.AppendLine($"║     {name,-20} adapter={adapterVer} sdk={sdkVer}");
+                    }
+                }
+            }
         }
 
         // ─── Adjust ───
 
         private static void DumpAdjustState(StringBuilder sb) {
             sb.AppendLine("║ ── Adjust ──");
-            #if HAS_ADJUST_SDK
-            sb.AppendLine($"║   SDK Available:     YES");
-            Adjust.GetAdid(adid => {
-                SDKLogger.Info(Tag, $"  Adjust ADID (async): {adid ?? "(null)"}");
-            });
+
+            System.Type adjustType = null;
+            foreach (var asm in System.AppDomain.CurrentDomain.GetAssemblies()) {
+                adjustType = asm.GetType("AdjustSdk.Adjust");
+                if (adjustType != null) break;
+            }
+
+            if (adjustType == null) {
+                sb.AppendLine("║   Adjust SDK:        NOT AVAILABLE");
+                return;
+            }
+
+            sb.AppendLine("║   SDK Available:     YES");
+
             // Consent mapping from current status
             var initializer = SDKInitializer.Instance;
             var consentModule = initializer?.GetModule("consent");
@@ -218,14 +261,12 @@ namespace ArcherStudio.SDK.Core {
                     sb.AppendLine($"║   MeasurementConsent:          {s.CanCollectAnalytics}");
                 }
             }
+
             #if PRODUCTION
             sb.AppendLine("║   Environment:       Production (PRODUCTION symbol)");
             sb.AppendLine("║   LogLevel:          Suppress");
             #else
             sb.AppendLine($"║   Environment:       {(Debug.isDebugBuild ? "Sandbox" : "Production")}");
-            #endif
-            #else
-            sb.AppendLine("║   Adjust SDK:        NOT AVAILABLE");
             #endif
         }
 
@@ -300,6 +341,22 @@ namespace ArcherStudio.SDK.Core {
             #else
             sb.AppendLine("║   PRODUCTION:       NO");
             #endif
+        }
+
+        // ─── Reflection Helpers ───
+
+        private static string CallStaticBool(System.Type type, string methodName) {
+            var method = type.GetMethod(methodName, System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static);
+            if (method == null) return "?";
+            try { return method.Invoke(null, null)?.ToString() ?? "?"; }
+            catch { return "error"; }
+        }
+
+        private static object GetStaticProp(System.Type type, string propName) {
+            var prop = type.GetProperty(propName, System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static);
+            if (prop == null) return "?";
+            try { return prop.GetValue(null); }
+            catch { return "error"; }
         }
 
         private static string Gd(bool granted) => granted ? "GRANTED" : "DENIED";
