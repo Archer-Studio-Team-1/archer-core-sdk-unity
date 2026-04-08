@@ -35,15 +35,20 @@ namespace ArcherStudio.SDK.Tracking {
 
         public void Initialize(Action<bool> onInitialized = null) {
             #if HAS_ADJUST_SDK
+            // PRODUCTION symbol forces production environment regardless of other flags.
+            // Without PRODUCTION: sandbox when UseSandboxInDebug=true OR Debug.isDebugBuild=true.
+            #if PRODUCTION
+            var environment = AdjustEnvironment.Production;
+            string envReason = "Production (PRODUCTION symbol defined)";
+            #else
             var environment = _config.UseSandboxInDebug || Debug.isDebugBuild
                 ? AdjustEnvironment.Sandbox
                 : AdjustEnvironment.Production;
 
             string envReason = _config.UseSandboxInDebug || Debug.isDebugBuild
-                ? "Sandbox (UseSandboxInDebug=true, isDebugBuild=true)"
-                : !_config.UseSandboxInDebug
-                    ? "Production (UseSandboxInDebug=false)"
-                    : "Production (isDebugBuild=false)";
+                ? $"Sandbox (UseSandboxInDebug={_config.UseSandboxInDebug}, isDebugBuild={Debug.isDebugBuild})"
+                : "Production (no debug flags)";
+            #endif
 
             SDKLogger.Info("Adjust", "═══════════════════════════════════════");
             SDKLogger.Info("Adjust", "  Adjust SDK Initialization");
@@ -62,10 +67,15 @@ namespace ArcherStudio.SDK.Tracking {
             };
 
             // ─── Log Level ───
+            #if PRODUCTION
+            adjustConfig.LogLevel = AdjustLogLevel.Suppress;
+            SDKLogger.Debug("Adjust", "  Log Level:    Suppress (PRODUCTION)");
+            #else
             if (_config.AdjustLogLevel != AdjustLogLevel.Info) {
                 adjustConfig.LogLevel = _config.AdjustLogLevel;
             }
             SDKLogger.Debug("Adjust", $"  Log Level:    {_config.AdjustLogLevel}");
+            #endif
 
             // ─── COPPA Compliance ───
             if (_config.EnableCoppaCompliance) {

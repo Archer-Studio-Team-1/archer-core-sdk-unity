@@ -36,8 +36,14 @@ namespace ArcherStudio.SDK.Core {
             DontDestroyOnLoad(gameObject);
 
             if (_config != null) {
+                #if PRODUCTION
+                // Production: disable SDK debug logs, only show warnings and errors
+                SDKLogger.SetMinLevel(LogLevel.Warning);
+                SDKLogger.SetEnabled(true);
+                #else
                 SDKLogger.SetMinLevel(_config.DebugMode ? LogLevel.Verbose : _config.MinLogLevel);
                 SDKLogger.SetEnabled(true);
+                #endif
             }
 
             SDKLogger.Info("Core", "SDKInitializer Awake.");
