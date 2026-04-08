@@ -31,6 +31,7 @@ namespace ArcherStudio.SDK.Tracking {
         public AdjustTrackingProvider(TrackingConfig config, Core.ConsentStatus initialConsent) {
             _config = config;
             _initialConsent = initialConsent;
+            _pendingMeasurementConsent = initialConsent;
         }
 
         public void Initialize(Action<bool> onInitialized = null) {
