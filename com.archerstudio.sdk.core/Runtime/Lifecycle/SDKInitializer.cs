@@ -37,13 +37,13 @@ namespace ArcherStudio.SDK.Core {
 
             if (_config != null) {
                 #if PRODUCTION
-                // Production: disable SDK debug logs, only show warnings and errors
+                // PRODUCTION: only warnings and errors, no debug noise
                 SDKLogger.SetMinLevel(LogLevel.Warning);
-                SDKLogger.SetEnabled(true);
                 #else
-                SDKLogger.SetMinLevel(_config.DebugMode ? LogLevel.Verbose : _config.MinLogLevel);
-                SDKLogger.SetEnabled(true);
+                // DEV/STAGING/default: always verbose for debugging on device
+                SDKLogger.SetMinLevel(LogLevel.Debug);
                 #endif
+                SDKLogger.SetEnabled(true);
             }
 
             SDKLogger.Info("Core", "SDKInitializer Awake.");

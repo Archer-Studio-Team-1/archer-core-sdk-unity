@@ -70,10 +70,18 @@ namespace ArcherStudio.SDK.Core {
                 sb.AppendLine($"║   EnableIAP:         {config.EnableIAP}");
             }
 
+            sb.AppendLine($"║   Build:             {GetBuildEnvironment()}");
+        }
+
+        private static string GetBuildEnvironment() {
             #if PRODUCTION
-            sb.AppendLine("║   Build:             PRODUCTION");
+            return "PRODUCTION";
+            #elif STAGING
+            return "STAGING";
+            #elif DEV
+            return "DEV";
             #else
-            sb.AppendLine($"║   Build:             DEBUG (isDebugBuild={Debug.isDebugBuild})");
+            return $"DEFAULT (isDebugBuild={Debug.isDebugBuild})";
             #endif
         }
 
@@ -262,12 +270,7 @@ namespace ArcherStudio.SDK.Core {
                 }
             }
 
-            #if PRODUCTION
-            sb.AppendLine("║   Environment:       Production (PRODUCTION symbol)");
-            sb.AppendLine("║   LogLevel:          Suppress");
-            #else
-            sb.AppendLine($"║   Environment:       {(Debug.isDebugBuild ? "Sandbox" : "Production")}");
-            #endif
+            sb.AppendLine($"║   Environment:       {GetBuildEnvironment()}");
         }
 
         // ─── Raw TCF Data ───
@@ -336,11 +339,7 @@ namespace ArcherStudio.SDK.Core {
             sb.AppendLine($"║   Version:          {Application.version}");
             sb.AppendLine($"║   isDebugBuild:     {Debug.isDebugBuild}");
             sb.AppendLine($"║   SystemLanguage:   {Application.systemLanguage}");
-            #if PRODUCTION
-            sb.AppendLine("║   PRODUCTION:       YES");
-            #else
-            sb.AppendLine("║   PRODUCTION:       NO");
-            #endif
+            sb.AppendLine($"║   Environment:      {GetBuildEnvironment()}");
         }
 
         // ─── Reflection Helpers ───

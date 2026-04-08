@@ -220,13 +220,10 @@ namespace ArcherStudio.SDK.Tracking {
             e.FillParams(SharedParams);
 
             bool verbose = _config == null || _config.VerboseLogging;
-
-            #if UNITY_EDITOR || DEVELOPMENT_BUILD
             if (verbose) {
                 string jsonParams = JsonConvert.SerializeObject(SharedParams, Formatting.None);
-                Debug.Log($"<color=cyan>[Tracking] Event: {e.EventName} | Params: {jsonParams}</color>");
+                SDKLogger.Debug(Tag, $"Event: {e.EventName} | Params: {jsonParams}");
             }
-            #endif
 
             foreach (var provider in _providers) {
                 provider.TrackEvent(e);
@@ -241,13 +238,11 @@ namespace ArcherStudio.SDK.Tracking {
         /// </summary>
         public void TrackAdRevenue(string adPlatform, string adSource, string adFormat,
             string adUnitName, string currency, double value, string placement) {
-            #if UNITY_EDITOR || DEVELOPMENT_BUILD
             bool verbose = _config == null || _config.VerboseLogging;
             if (verbose) {
-                Debug.Log($"<color=cyan>[Tracking] AdRevenue: {adPlatform}/{adSource} " +
-                          $"{currency} {value:F6} [{adFormat}]</color>");
+                SDKLogger.Info(Tag, $"IAA Revenue: {adPlatform}/{adSource} " +
+                    $"{currency} {value:F6} [{adFormat}] unit={adUnitName}");
             }
-            #endif
 
             foreach (var provider in _providers) {
                 provider.TrackAdRevenue(adPlatform, adSource, adFormat,
@@ -271,13 +266,11 @@ namespace ArcherStudio.SDK.Tracking {
                     { TrackingConstants.PAR_IAA_REVENUE_MICRO, iaaRevenueMicro }
                 });
 
-            #if UNITY_EDITOR || DEVELOPMENT_BUILD
             bool verbose = _config == null || _config.VerboseLogging;
             if (verbose) {
-                Debug.Log($"<color=cyan>[Tracking] ad_revenue: mediation={adMediation}, " +
-                          $"source={adSource}, unit={adUnitId}, revenue_micro={iaaRevenueMicro}</color>");
+                SDKLogger.Debug(Tag, $"ad_revenue: mediation={adMediation}, " +
+                    $"source={adSource}, unit={adUnitId}, revenue_micro={iaaRevenueMicro}");
             }
-            #endif
 
             foreach (var provider in _providers) {
                 provider.TrackEvent(customEvent);
@@ -293,13 +286,11 @@ namespace ArcherStudio.SDK.Tracking {
         /// </summary>
         public void TrackIAPRevenue(string productId, double revenue, string currency,
             string transactionId, string receipt, string source) {
-            #if UNITY_EDITOR || DEVELOPMENT_BUILD
-            bool verbose = _config != null ? _config.VerboseLogging : true;
+            bool verbose = _config == null || _config.VerboseLogging;
             if (verbose) {
-                Debug.Log($"<color=cyan>[Tracking] Internal - IAPRevenue: {productId} " +
-                          $"{currency} {revenue:F2} txn={transactionId}</color>");
+                SDKLogger.Info(Tag, $"IAP Revenue: {productId} {currency} {revenue:F2} " +
+                    $"txn={transactionId} source={source}");
             }
-            #endif
 
             foreach (var provider in _providers) {
                 provider.TrackIAPRevenue(productId, revenue, currency,
@@ -323,10 +314,7 @@ namespace ArcherStudio.SDK.Tracking {
         // ─── User Profile ───
 
         public void IdentifyUser(UserProfile profile) {
-            #if UNITY_EDITOR || DEVELOPMENT_BUILD
-            string jsonProps = JsonConvert.SerializeObject(profile.GetAllProperties(), Formatting.None);
-            Debug.Log($"<color=green>[Tracking] Identify User: {profile.DeviceId} | Properties: {jsonProps}</color>");
-            #endif
+            SDKLogger.Debug(Tag, $"IdentifyUser: {profile.DeviceId}");
 
             if (_currentUserProfile != null) {
                 _currentUserProfile.OnPropertyChanged -= OnUserProfilePropertyChanged;
@@ -382,9 +370,7 @@ namespace ArcherStudio.SDK.Tracking {
         private void OnUserProfilePropertyChanged(string key, string value) {
             _isDirty = true;
 
-            #if UNITY_EDITOR || DEVELOPMENT_BUILD
-            Debug.Log($"<color=green>[Tracking] Auto-Sync Property: {key} = {value}</color>");
-            #endif
+            SDKLogger.Debug(Tag, $"UserProperty: {key} = {value}");
 
             foreach (var provider in _providers) {
                 provider.SetUserProperty(key, value);

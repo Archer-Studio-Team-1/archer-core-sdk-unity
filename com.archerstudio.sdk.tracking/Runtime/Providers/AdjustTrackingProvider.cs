@@ -36,19 +36,20 @@ namespace ArcherStudio.SDK.Tracking {
 
         public void Initialize(Action<bool> onInitialized = null) {
             #if HAS_ADJUST_SDK
-            // PRODUCTION symbol forces production environment regardless of other flags.
-            // Without PRODUCTION: sandbox when UseSandboxInDebug=true OR Debug.isDebugBuild=true.
+            // PRODUCTION symbol → always production
+            // DEV/STAGING/default → always sandbox
             #if PRODUCTION
             var environment = AdjustEnvironment.Production;
-            string envReason = "Production (PRODUCTION symbol defined)";
+            string envReason = "Production (PRODUCTION symbol)";
             #else
-            var environment = _config.UseSandboxInDebug || Debug.isDebugBuild
-                ? AdjustEnvironment.Sandbox
-                : AdjustEnvironment.Production;
-
-            string envReason = _config.UseSandboxInDebug || Debug.isDebugBuild
-                ? $"Sandbox (UseSandboxInDebug={_config.UseSandboxInDebug}, isDebugBuild={Debug.isDebugBuild})"
-                : "Production (no debug flags)";
+            var environment = AdjustEnvironment.Sandbox;
+            #if DEV
+            string envReason = "Sandbox (DEV symbol)";
+            #elif STAGING
+            string envReason = "Sandbox (STAGING symbol)";
+            #else
+            string envReason = "Sandbox (no PRODUCTION symbol)";
+            #endif
             #endif
 
             SDKLogger.Info("Adjust", "═══════════════════════════════════════");
@@ -72,10 +73,9 @@ namespace ArcherStudio.SDK.Tracking {
             adjustConfig.LogLevel = AdjustLogLevel.Suppress;
             SDKLogger.Debug("Adjust", "  Log Level:    Suppress (PRODUCTION)");
             #else
-            if (_config.AdjustLogLevel != AdjustLogLevel.Info) {
-                adjustConfig.LogLevel = _config.AdjustLogLevel;
-            }
-            SDKLogger.Debug("Adjust", $"  Log Level:    {_config.AdjustLogLevel}");
+            // DEV/STAGING: always verbose for device debugging
+            adjustConfig.LogLevel = AdjustLogLevel.Verbose;
+            SDKLogger.Debug("Adjust", "  Log Level:    Verbose (non-PRODUCTION)");
             #endif
 
             // ─── COPPA Compliance ───
