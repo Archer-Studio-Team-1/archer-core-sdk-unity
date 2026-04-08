@@ -39,7 +39,7 @@ namespace ArcherStudio.SDK.Core.Editor {
 
         private void OnEnable() {
             _gitRepoUrl = EditorPrefs.GetString(PrefsKeyGitUrl, "https://github.com/Archer-Studio-Team-1/archer-core-sdk-unity.git");
-            _gitRef = EditorPrefs.GetString(PrefsKeyGitRef, "v0.1.5");
+            _gitRef = EditorPrefs.GetString(PrefsKeyGitRef, "main");
             _localRelativePath = EditorPrefs.GetString(PrefsKeyLocalPath, "../../archer-core-sdk-unity");
             _manifestPath = Path.GetFullPath("Packages/manifest.json");
             Refresh();
@@ -207,6 +207,22 @@ namespace ArcherStudio.SDK.Core.Editor {
             GUI.enabled = true;
             GUI.backgroundColor = Color.white;
             EditorGUILayout.EndHorizontal();
+
+            // Update All (re-fetch latest from git)
+            if (_currentMode == SourceMode.Git || _currentMode == SourceMode.Mixed) {
+                EditorGUILayout.Space(4);
+                GUI.backgroundColor = new Color(1f, 0.7f, 0.2f);
+                if (GUILayout.Button("Update All SDK (pull latest from git)", GUILayout.Height(30))) {
+                    if (EditorUtility.DisplayDialog("Update All SDK Packages",
+                        "This will delete the cached packages in Library/PackageCache and " +
+                        "re-resolve all com.archerstudio.sdk.* packages from git.\n\n" +
+                        "Unity will re-download the latest commit from each package's branch/tag.\n\nContinue?",
+                        "Update", "Cancel")) {
+                        UpdateAllFromGit();
+                    }
+                }
+                GUI.backgroundColor = Color.white;
+            }
         }
 
         private void DrawPackageList() {
@@ -289,6 +305,29 @@ namespace ArcherStudio.SDK.Core.Editor {
         private static string ExtractGitRef(string source) {
             int hashIndex = source.LastIndexOf('#');
             return hashIndex >= 0 ? source.Substring(hashIndex + 1) : "";
+        }
+
+        // ─── Update from Git ───
+
+        private void UpdateAllFromGit() {
+            // Delete cached packages so Unity re-downloads from git
+            string packageCachePath = Path.GetFullPath("Library/PackageCache");
+            int cleared = 0;
+            if (Directory.Exists(packageCachePath)) {
+                foreach (var dir in Directory.GetDirectories(packageCachePath, "com.archerstudio.sdk.*")) {
+                    try {
+                        Directory.Delete(dir, true);
+                        cleared++;
+                        Debug.Log($"[{Tag}] Cleared cache: {Path.GetFileName(dir)}");
+                    } catch (System.Exception e) {
+                        Debug.LogWarning($"[{Tag}] Failed to clear {dir}: {e.Message}");
+                    }
+                }
+            }
+
+            Debug.Log($"[{Tag}] Cleared {cleared} cached SDK packages. Re-resolving...");
+            UnityEditor.PackageManager.Client.Resolve();
+            Refresh();
         }
 
         // ─── Switch Logic ───

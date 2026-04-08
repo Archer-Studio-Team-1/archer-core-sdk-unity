@@ -1,6 +1,6 @@
 {
   "name": "com.archerstudio.sdk.tracking",
-  "version": "0.1.6-a",
+  "version": "0.1.7",
   "displayName": "Archer Studio SDK - Tracking",
   "description": "Event tracking system with Firebase Analytics and Adjust attribution providers.",
   "unity": "6000.0",
@@ -8,8 +8,8 @@
     "name": "QuanNV - Team 1"
   },
   "dependencies": {
-    "com.archerstudio.sdk.core": "0.1.6-a",
-    "com.archerstudio.sdk.consent": "0.1.6-a",
+    "com.archerstudio.sdk.core": "0.1.7",
+    "com.archerstudio.sdk.consent": "0.1.7",
     "com.unity.nuget.newtonsoft-json": "3.2.1"
   }
 }
