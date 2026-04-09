@@ -180,28 +180,45 @@ namespace ArcherStudio.SDK.Consent {
 
         #if HAS_GOOGLE_UMP
         /// <summary>
-        /// Build ConsentStatus from UMP consent mode values.
-        /// UMP already resolves TCF Purposes → consent mode:
-        ///   Purpose 1 denied → ad_storage=DENIED, ad_user_data=DENIED
-        ///   Purpose 3,4 denied → ad_personalization=DENIED
-        ///   Purpose 7 denied → ad_user_data=DENIED
-        /// We read the resolved values directly — no extra gộp needed.
+        /// Build ConsentStatus from raw IABTCF_PurposeConsents string.
+        ///
+        /// Previous approach read UMP_CoMo* internal keys, but these may not be
+        /// written yet when the UMP callback fires (timing issue on Android).
+        ///
+        /// Now reads IABTCF_PurposeConsents directly (guaranteed written per IAB spec)
+        /// and computes consent mode per Google's official mapping:
+        ///   ad_storage        = P1
+        ///   ad_user_data      = P1 && P7
+        ///   ad_personalization = P3 && P4
+        ///   analytics_storage = P1 && P7
         /// </summary>
         private ConsentStatus BuildStatus() {
             bool isEea = _isConsentRequired;
 
-            // UMP writes resolved consent mode values to SharedPreferences.
-            // 1 = GRANTED, 2 = DENIED, 0 = not set.
-            bool adStorage = ReadConsentModeGranted("UMP_CoMoAdStoragePurposeConsentStatus");
-            bool adUserData = ReadConsentModeGranted("UMP_CoMoAdUserDataPurposeConsentStatus");
-            bool adPersonalization = ReadConsentModeGranted("UMP_CoMoAdPersonalizationPurposeConsentStatus");
-            bool analyticsStorage = ReadConsentModeGranted("UMP_CoMoAnalyticsStoragePurposeConsentStatus");
+            // Read raw TCF purpose bits from SharedPreferences/NSUserDefaults
+            bool p1 = ConsentHelper.IsPurposeGranted(1);
+            bool p3 = ConsentHelper.IsPurposeGranted(3);
+            bool p4 = ConsentHelper.IsPurposeGranted(4);
+            bool p7 = ConsentHelper.IsPurposeGranted(7);
 
-            SDKLogger.Info(Tag,
-                $"UMP consent mode: adStorage={adStorage}, adUserData={adUserData}, " +
-                $"adPersonalization={adPersonalization}, analyticsStorage={analyticsStorage}");
+            // Compute consent mode per Google TCF mapping docs
+            bool adStorage = p1;                    // P1
+            bool adUserData = p1 && p7;             // P1 && P7
+            bool adPersonalization = p3 && p4;      // P3 && P4
+            bool analyticsStorage = p1 && p7;       // P1 && P7
 
-            // Map 1:1 to ConsentStatus — no gộp, keep separate per TCF docs
+            SDKLogger.Info(Tag, "┌─── UMP Consent (from TCF Purposes) ───");
+            SDKLogger.Info(Tag, $"│ P1  (storage/access):    {p1}");
+            SDKLogger.Info(Tag, $"│ P3  (ads profile):       {p3}");
+            SDKLogger.Info(Tag, $"│ P4  (select ads):        {p4}");
+            SDKLogger.Info(Tag, $"│ P7  (ad measurement):    {p7}");
+            SDKLogger.Info(Tag, $"│ → ad_storage:            {adStorage} (P1)");
+            SDKLogger.Info(Tag, $"│ → ad_user_data:          {adUserData} (P1&&P7)");
+            SDKLogger.Info(Tag, $"│ → ad_personalization:    {adPersonalization} (P3&&P4)");
+            SDKLogger.Info(Tag, $"│ → analytics_storage:     {analyticsStorage} (P1&&P7)");
+            SDKLogger.Info(Tag, $"│ CanRequestAds:           {ConsentInformation.CanRequestAds()}");
+            SDKLogger.Info(Tag, "└────────────────────────────────────────");
+
             return new ConsentStatus(
                 canShowPersonalizedAds: adPersonalization,
                 canCollectAnalytics: analyticsStorage,
@@ -210,30 +227,6 @@ namespace ArcherStudio.SDK.Consent {
                 hasAttConsent: true,
                 source: ConsentSource.GoogleUMP,
                 canStoreAdData: adStorage);
-        }
-
-        /// <summary>
-        /// Read UMP consent mode value from SharedPreferences.
-        /// Returns true if GRANTED (value=1), false if DENIED (value=2) or not set.
-        /// </summary>
-        private static bool ReadConsentModeGranted(string key) {
-            #if UNITY_ANDROID && !UNITY_EDITOR
-            try {
-                using var unityPlayer = new UnityEngine.AndroidJavaClass("com.unity3d.player.UnityPlayer");
-                using var activity = unityPlayer.GetStatic<UnityEngine.AndroidJavaObject>("currentActivity");
-                using var prefs = activity.Call<UnityEngine.AndroidJavaObject>(
-                    "getSharedPreferences",
-                    activity.Call<string>("getPackageName") + "_preferences",
-                    0); // MODE_PRIVATE
-                int value = prefs.Call<int>("getInt", key, 0);
-                return value == 1; // 1 = GRANTED, 2 = DENIED, 0 = not set
-            } catch (System.Exception e) {
-                SDKLogger.Warning(Tag, $"Failed to read {key}: {e.Message}");
-                return ConsentInformation.CanRequestAds(); // fallback
-            }
-            #else
-            return ConsentInformation.CanRequestAds();
-            #endif
         }
         #endif
     }
