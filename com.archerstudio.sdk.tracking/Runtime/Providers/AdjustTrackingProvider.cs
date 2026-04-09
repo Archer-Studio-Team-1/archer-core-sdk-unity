@@ -611,14 +611,15 @@ namespace ArcherStudio.SDK.Tracking {
         /// </summary>
         private static void SendThirdPartySharing(ConsentStatus consent) {
             #if HAS_ADJUST_SDK
-            var tps = new AdjustThirdPartySharing(consent.CanTrackAttribution);
+            // null = let Adjust auto-decide from TCF vendor data in SharedPreferences
+            var tps = new AdjustThirdPartySharing(null);
 
             // ─── Google DMA (Digital Markets Act) ───
             // All fields required for full DMA compliance on Adjust dashboard.
             string eea = consent.IsEeaUser ? "1" : "0";
-            string adPersonalization = consent.CanShowPersonalizedAds ? "1" : "0";
-            string adUserData = consent.CanTrackAttribution ? "1" : "0";
-            string adStorage = consent.CanCollectAnalytics ? "1" : "0";
+            string adPersonalization = consent.CanShowPersonalizedAds ? "1" : "0";  // P3 && P4
+            string adUserData = consent.CanTrackAttribution ? "1" : "0";            // P1 && P7
+            string adStorage = consent.CanStoreAdData ? "1" : "0";                  // P1
             string npa = consent.CanShowPersonalizedAds ? "0" : "1";
 
             tps.AddGranularOption("google_dma", "eea", eea);

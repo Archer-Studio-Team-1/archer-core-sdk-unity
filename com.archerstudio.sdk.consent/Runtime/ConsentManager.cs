@@ -266,9 +266,9 @@ namespace ArcherStudio.SDK.Consent {
             #else
             SDKLogger.Info(Tag, $"║   (Facebook SDK not available)");
             #endif
-            SDKLogger.Info(Tag, $"║   Will set AutoLogAppEvents:      {status.CanCollectAnalytics}");
-            SDKLogger.Info(Tag, $"║   Will set AdvertiserIDCollection: {status.CanTrackAttribution}");
-            SDKLogger.Info(Tag, $"║   Will set LDU:                    {(status.IsDoNotSell ? "LDU enabled" : "disabled")}");
+            SDKLogger.Info(Tag, $"║   AutoLogAppEvents (P1&&P7):       {status.CanTrackAttribution}");
+            SDKLogger.Info(Tag, $"║   AdIDCollection (P1&&P3&&P4):    {status.CanStoreAdData && status.CanShowPersonalizedAds}");
+            SDKLogger.Info(Tag, $"║   LDU (NOT P3&&P4):               {(!status.CanShowPersonalizedAds ? "LDU enabled" : "disabled")}");
             #if UNITY_IOS
             SDKLogger.Info(Tag, $"║   Will set AdvertiserTracking:     {status.HasAttConsent}");
             #endif
@@ -282,7 +282,8 @@ namespace ArcherStudio.SDK.Consent {
             SDKLogger.Info(Tag, $"║   google_dma npa:                 {(status.CanShowPersonalizedAds ? "0" : "1")}");
             SDKLogger.Info(Tag, $"║   facebook data_processing_country: {(status.IsDoNotSell ? "1" : "0")}");
             SDKLogger.Info(Tag, $"║   facebook data_processing_state:   {(status.IsDoNotSell ? "1000" : "0")}");
-            SDKLogger.Info(Tag, $"║   MeasurementConsent:              {status.CanCollectAnalytics}");
+            SDKLogger.Info(Tag, $"║   ThirdPartySharing:               null (auto from TCF)");
+            SDKLogger.Info(Tag, $"║   MeasurementConsent:              true (always)");
 
             // 6. Raw TCF data (read from correct storage per platform)
             SDKLogger.Info(Tag, "║ ── Raw TCF Data ──");
@@ -361,21 +362,30 @@ namespace ArcherStudio.SDK.Consent {
         #if HAS_FACEBOOK_SDK
         private static void ApplyFacebookConsentInternal(ConsentStatus status) {
             try {
-                Facebook.Unity.FB.Mobile.SetAutoLogAppEventsEnabled(status.CanCollectAnalytics);
-                Facebook.Unity.FB.Mobile.SetAdvertiserIDCollectionEnabled(status.CanTrackAttribution);
+                // Per checklist: SetAutoLogAppEventsEnabled = P1 && P7 = CanTrackAttribution (ad_user_data)
+                bool autoLog = status.CanTrackAttribution;
 
-                // CCPA: Limited Data Use (LDU) — restricts Facebook data processing
+                // Per checklist: SetAdvertiserIDCollectionEnabled = P1 && P3 && P4
+                //   P1 = CanStoreAdData (ad_storage)
+                //   P3 && P4 = CanShowPersonalizedAds (ad_personalization)
+                bool adIdCollection = status.CanStoreAdData && status.CanShowPersonalizedAds;
+
+                // Per checklist: LDU = NOT (P3 && P4) = !CanShowPersonalizedAds
+                bool enableLdu = !status.CanShowPersonalizedAds;
+
+                Facebook.Unity.FB.Mobile.SetAutoLogAppEventsEnabled(autoLog);
+                Facebook.Unity.FB.Mobile.SetAdvertiserIDCollectionEnabled(adIdCollection);
                 Facebook.Unity.FB.Mobile.SetDataProcessingOptions(
-                    new string[] { status.IsDoNotSell ? "LDU" : "" }, 0, 0);
+                    new string[] { enableLdu ? "LDU" : "" }, 0, 0);
 
                 #if UNITY_IOS
                 Facebook.Unity.FB.Mobile.SetAdvertiserTrackingEnabled(status.HasAttConsent);
                 #endif
 
                 SDKLogger.Info(Tag,
-                    $"Facebook consent applied — AutoLog={status.CanCollectAnalytics}, " +
-                    $"AdIDCollection={status.CanTrackAttribution}, " +
-                    $"LDU={status.IsDoNotSell}");
+                    $"Facebook consent applied — AutoLog={autoLog} (P1&&P7), " +
+                    $"AdIDCollection={adIdCollection} (P1&&P3&&P4), " +
+                    $"LDU={enableLdu} (NOT P3&&P4)");
             } catch (System.Exception e) {
                 SDKLogger.Warning(Tag, $"Facebook consent apply failed: {e.Message}");
             }
