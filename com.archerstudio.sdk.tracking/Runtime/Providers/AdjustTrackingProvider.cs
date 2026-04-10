@@ -648,8 +648,10 @@ namespace ArcherStudio.SDK.Tracking {
         private void ApplyConsentBeforeInit(ConsentStatus consent) {
             #if HAS_ADJUST_SDK
             SendThirdPartySharing(consent);
-            // NOTE: TrackMeasurementConsent requires SDK to be started,
-            // called in SetConsent() after InitSdk.
+            // TrackMeasurementConsent MUST be called before InitSdk() for non-GDPR regions.
+            // Without this, Adjust rejects the install session with "measurement consent required".
+            Adjust.TrackMeasurementConsent(true);
+            SDKLogger.Info("Adjust", "  MeasurementConsent=true (pre-init)");
             #endif
         }
 
