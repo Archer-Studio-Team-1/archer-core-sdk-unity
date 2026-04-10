@@ -114,47 +114,18 @@ namespace ArcherStudio.SDK.Ads {
         }
 
         /// <summary>
-        /// For non-GDPR users: show MAX CMP Terms/Privacy dialog.
-        /// BLOCKS — onDone is called only after user dismisses the dialog.
-        /// If no dialog needed, onDone is called immediately.
+        /// For non-GDPR users: flag is set so game can show Terms/Privacy UI.
+        /// Does NOT block SDK init — all SDKs must init regardless of region.
+        /// Game reads SDKInitCoordinator.NeedsPostInitTermsAndPolicy after boot.
         /// </summary>
         private void ShowPostInitTermsIfNeeded(Action onDone) {
-            if (!SDKInitCoordinator.NeedsPostInitTermsAndPolicy) {
-                onDone?.Invoke();
-                return;
+            if (SDKInitCoordinator.NeedsPostInitTermsAndPolicy) {
+                SDKLogger.Info(Tag,
+                    "Non-GDPR: NeedsPostInitTermsAndPolicy=true. " +
+                    "Game should show Terms/Privacy UI after SDK init.");
             }
-            SDKInitCoordinator.NeedsPostInitTermsAndPolicy = false;
 
-            #if HAS_APPLOVIN_MAX_SDK
-            try {
-                var cmpService = MaxSdk.CmpService;
-                if (cmpService != null && cmpService.HasSupportedCmp) {
-                    SDKLogger.Info(Tag,
-                        "Non-GDPR: Showing MAX CMP Terms/Privacy. Waiting for user...");
-
-                    bool done = false;
-                    cmpService.ShowCmpForExistingUser(error => {
-                        if (done) return;
-                        done = true;
-                        if (error != null) {
-                            SDKLogger.Warning(Tag, $"MAX CMP Terms/Privacy error: {error.Message}");
-                        } else {
-                            SDKLogger.Info(Tag, "MAX CMP Terms/Privacy accepted.");
-                        }
-                        onDone?.Invoke();
-                    });
-                    return;
-                }
-
-                SDKLogger.Debug(Tag, "MAX CMP not available. Skipping.");
-            } catch (System.Exception e) {
-                SDKLogger.Warning(Tag, $"ShowPostInitTerms failed: {e.Message}");
-            }
-            #else
-            SDKLogger.Debug(Tag,
-                "NeedsPostInitTermsAndPolicy=true but HAS_APPLOVIN_MAX_SDK not defined.");
-            #endif
-
+            // Never block — all SDKs must init for non-GDPR regions
             onDone?.Invoke();
         }
 

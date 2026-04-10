@@ -134,7 +134,7 @@ namespace ArcherStudio.SDK.Core {
                 Level = level;
                 Module = module;
                 Message = message;
-                Timestamp = Time.realtimeSinceStartup;
+                Timestamp = Environment.TickCount / 1000f;
             }
 
             public override string ToString() {
