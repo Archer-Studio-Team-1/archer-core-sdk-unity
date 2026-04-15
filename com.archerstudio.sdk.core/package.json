@@ -1,6 +1,6 @@
 {
   "name": "com.archerstudio.sdk.core",
-  "version": "0.1.8",
+  "version": "0.1.9",
   "displayName": "Archer Studio SDK - Core",
   "description": "Core foundation for ArcherStudioSDK: initialization orchestration, dependency graph, event bus, configuration, logging, and base utilities.",
   "unity": "6000.0",
