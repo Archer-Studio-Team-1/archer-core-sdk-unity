@@ -128,17 +128,15 @@ namespace ArcherStudio.SDK.Core {
             public readonly LogLevel Level;
             public readonly string Module;
             public readonly string Message;
-            public readonly float Timestamp;
 
             public LogEntry(LogLevel level, string module, string message) {
                 Level = level;
                 Module = module;
                 Message = message;
-                Timestamp = Environment.TickCount / 1000f;
             }
 
             public override string ToString() {
-                return $"[{Timestamp:F1}][{Level}][{Module}] {Message}";
+                return $"[{Level}][{Module}] {Message}";
             }
         }
     }

@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics;
 using UnityEngine;
 using UnityEngine.Events;
 using Cysharp.Threading.Tasks;
@@ -28,6 +29,12 @@ namespace ArcherStudio.SDK.Core {
         private static readonly UniTaskCompletionSource _initTcs = new();
         public static UniTask WaitUntilInitialized => _initTcs.Task;
 
+        // Thread-safe monotonic clock. Time.realtimeSinceStartup throws when called
+        // off the main thread (e.g. Adjust SDK callbacks firing on a worker thread),
+        // so use Stopwatch instead.
+        private static readonly Stopwatch _clock = Stopwatch.StartNew();
+        private static float NowSeconds => (float)_clock.Elapsed.TotalSeconds;
+
         [Header("Config")]
         [SerializeField]
         [Tooltip("Drag SDKBootstrapConfig here, or leave null to auto-load from Resources.")]
@@ -48,7 +55,7 @@ namespace ArcherStudio.SDK.Core {
         public BootstrapState CurrentState => _currentState;
 
         private void Awake() {
-            _startTime = Time.realtimeSinceStartup;
+            _startTime = NowSeconds;
 
             // Load bootstrap config
             if (_bootstrapConfig == null) {
@@ -192,7 +199,7 @@ namespace ArcherStudio.SDK.Core {
 
         private void OnSDKReady(SDKReadyEvent e) {
             _sdkReady = true;
-            float elapsed = Time.realtimeSinceStartup - _startTime;
+            float elapsed = NowSeconds - _startTime;
             SDKLogger.Info(Tag, $"SDK ready in {elapsed:F2}s. Success={e.Success}");
             
             if (_currentState != BootstrapState.Failed) {
@@ -207,7 +214,7 @@ namespace ArcherStudio.SDK.Core {
 
             SDKLogger.Info(Tag, "SDK Bootstrap complete. Invoking completion event.");
 
-            float totalElapsed = Time.realtimeSinceStartup - _startTime;
+            float totalElapsed = NowSeconds - _startTime;
             SDKEventBus.Publish(new BootstrapCompleteEvent(totalElapsed, _totalModules, 0));
 
             _onComplete?.Invoke();

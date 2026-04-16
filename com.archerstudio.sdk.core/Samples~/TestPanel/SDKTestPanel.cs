@@ -192,7 +192,7 @@ namespace ArcherStudio.SDK.Examples {
 
         private void OnLogEntry(SDKLogger.LogEntry entry) {
             string color = GetLogColor(entry.Level);
-            string line = $"<color={color}>[{entry.Timestamp:F1}][{entry.Module}] {entry.Message}</color>";
+            string line = $"<color={color}>[{entry.Module}] {entry.Message}</color>";
 
             _logLines.Add(line);
             if (_logLines.Count > SDKLogger.MaxLogEntries) {

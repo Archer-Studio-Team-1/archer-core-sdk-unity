@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Diagnostics;
 using ArcherStudio.SDK.Core;
 using UnityEngine;
 
@@ -10,6 +11,11 @@ namespace ArcherStudio.SDK.Ads {
     /// </summary>
     public class FrequencyCapper {
         private const string Tag = "FrequencyCap";
+
+        // Thread-safe monotonic clock. Time.realtimeSinceStartup throws when called
+        // off the main thread (ad callbacks may fire on worker threads).
+        private static readonly Stopwatch _clock = Stopwatch.StartNew();
+        private static float NowSeconds => (float)_clock.Elapsed.TotalSeconds;
 
         private readonly int _interstitialCooldownSeconds;
         private readonly int _maxInterstitialsPerSession;
@@ -40,7 +46,7 @@ namespace ArcherStudio.SDK.Ads {
             // Check cooldown for interstitials
             if (format == AdFormat.Interstitial && _interstitialCooldownSeconds > 0) {
                 if (_lastShowTime.TryGetValue(placementId, out float lastTime)) {
-                    float elapsed = Time.realtimeSinceStartup - lastTime;
+                    float elapsed = NowSeconds - lastTime;
                     int remaining = Mathf.CeilToInt(_interstitialCooldownSeconds - elapsed);
                     if (remaining > 0) {
                         return new CapCheckResult(false,
@@ -58,7 +64,7 @@ namespace ArcherStudio.SDK.Ads {
             _sessionCounts[format]++;
 
             // Record time
-            _lastShowTime[placementId] = Time.realtimeSinceStartup;
+            _lastShowTime[placementId] = NowSeconds;
 
             SDKLogger.Debug(Tag,
                 $"Recorded show: {placementId} ({format}). " +
