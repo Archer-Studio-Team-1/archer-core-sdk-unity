@@ -180,44 +180,63 @@ namespace ArcherStudio.SDK.Consent {
 
         #if HAS_GOOGLE_UMP
         /// <summary>
-        /// Build ConsentStatus from raw IABTCF_PurposeConsents string.
+        /// Build ConsentStatus from raw IABTCF_* signals.
         ///
         /// Previous approach read UMP_CoMo* internal keys, but these may not be
         /// written yet when the UMP callback fires (timing issue on Android).
         ///
-        /// Now reads IABTCF_PurposeConsents directly (guaranteed written per IAB spec)
-        /// and computes consent mode per Google's official mapping:
-        ///   ad_storage        = P1
-        ///   ad_user_data      = P1 && P7
-        ///   ad_personalization = P3 && P4
-        ///   analytics_storage = P1 && P7
+        /// Now reads IABTCF_* directly (guaranteed written per IAB spec) and
+        /// computes consent mode per Google's official TCF → Consent Mode mapping
+        /// (https://developers.google.com/tag-platform/security/concepts/gcm-tcf).
+        /// Google Advertising Products is TCF Vendor 755 — its consent/LI signal
+        /// is required in addition to Purpose bits:
+        ///   ad_storage         = P1.consent && V755.consent
+        ///   ad_user_data       = P1.consent && V755.consent &&
+        ///                        (P7.consent || (P7.LI && V755.LI))
+        ///   ad_personalization = P3.consent && P4.consent && V755.consent
+        ///   analytics_storage  = P1.consent && V755.consent &&
+        ///                        (P7.consent || (P7.LI && V755.LI))
+        /// Note: P1, P3, P4 are consent-only under TCF v2.2 (no LI option).
         /// </summary>
         private ConsentStatus BuildStatus() {
             bool isEea = _isConsentRequired;
 
-            // Read raw TCF purpose bits from SharedPreferences/NSUserDefaults
+            // Purpose consent bits
             bool p1 = ConsentHelper.IsPurposeGranted(1);
             bool p3 = ConsentHelper.IsPurposeGranted(3);
             bool p4 = ConsentHelper.IsPurposeGranted(4);
             bool p7 = ConsentHelper.IsPurposeGranted(7);
 
-            // Compute consent mode per Google TCF mapping docs
-            bool adStorage = p1;                    // P1
-            bool adUserData = p1 && p7;             // P1 && P7
-            bool adPersonalization = p3 && p4;      // P3 && P4
-            bool analyticsStorage = p1 && p7;       // P1 && P7
+            // Purpose 7 Legitimate Interest (P1/P3/P4 are consent-only, no LI)
+            bool p7Li = ConsentHelper.IsPurposeLegitimateInterestGranted(7);
 
-            SDKLogger.Info(Tag, "┌─── UMP Consent (from TCF Purposes) ───");
-            SDKLogger.Info(Tag, $"│ P1  (storage/access):    {p1}");
-            SDKLogger.Info(Tag, $"│ P3  (ads profile):       {p3}");
-            SDKLogger.Info(Tag, $"│ P4  (select ads):        {p4}");
-            SDKLogger.Info(Tag, $"│ P7  (ad measurement):    {p7}");
-            SDKLogger.Info(Tag, $"│ → ad_storage:            {adStorage} (P1)");
-            SDKLogger.Info(Tag, $"│ → ad_user_data:          {adUserData} (P1&&P7)");
-            SDKLogger.Info(Tag, $"│ → ad_personalization:    {adPersonalization} (P3&&P4)");
-            SDKLogger.Info(Tag, $"│ → analytics_storage:     {analyticsStorage} (P1&&P7)");
-            SDKLogger.Info(Tag, $"│ CanRequestAds:           {ConsentInformation.CanRequestAds()}");
-            SDKLogger.Info(Tag, "└────────────────────────────────────────");
+            // Google Advertising Products (Vendor 755) consent + LI
+            bool v755Consent = ConsentHelper.IsVendorGranted(755);
+            bool v755Li = ConsentHelper.IsVendorLegitimateInterestGranted(755);
+
+            // Measurement leg: consent OR (LI AND vendor LI)
+            bool measurementLeg = p7 || (p7Li && v755Li);
+
+            // Google Consent Mode v2 with Vendor 755 gating
+            bool adStorage = p1 && v755Consent;
+            bool adUserData = p1 && v755Consent && measurementLeg;
+            bool adPersonalization = p3 && p4 && v755Consent;
+            bool analyticsStorage = p1 && v755Consent && measurementLeg;
+
+            SDKLogger.Info(Tag, "┌─── UMP Consent (from TCF Purposes + Vendor 755) ───");
+            SDKLogger.Info(Tag, $"│ P1  (storage/access):       {p1}");
+            SDKLogger.Info(Tag, $"│ P3  (ads profile):          {p3}");
+            SDKLogger.Info(Tag, $"│ P4  (select ads):           {p4}");
+            SDKLogger.Info(Tag, $"│ P7  (ad measurement):       {p7}");
+            SDKLogger.Info(Tag, $"│ P7  LI (ad measurement):    {p7Li}");
+            SDKLogger.Info(Tag, $"│ V755 (Google) consent:      {v755Consent}");
+            SDKLogger.Info(Tag, $"│ V755 (Google) LI:           {v755Li}");
+            SDKLogger.Info(Tag, $"│ → ad_storage:               {adStorage} (P1 && V755.c)");
+            SDKLogger.Info(Tag, $"│ → ad_user_data:             {adUserData} (P1 && V755.c && (P7 || P7.LI && V755.LI))");
+            SDKLogger.Info(Tag, $"│ → ad_personalization:       {adPersonalization} (P3 && P4 && V755.c)");
+            SDKLogger.Info(Tag, $"│ → analytics_storage:        {analyticsStorage} (P1 && V755.c && (P7 || P7.LI && V755.LI))");
+            SDKLogger.Info(Tag, $"│ CanRequestAds:              {ConsentInformation.CanRequestAds()}");
+            SDKLogger.Info(Tag, "└──────────────────────────────────────────────────");
 
             return new ConsentStatus(
                 canShowPersonalizedAds: adPersonalization,

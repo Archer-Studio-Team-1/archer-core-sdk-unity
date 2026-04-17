@@ -38,6 +38,22 @@ namespace ArcherStudio.SDK.Consent {
         }
 
         /// <summary>
+        /// Check if a specific TCF Purpose has been granted under Legitimate Interest.
+        /// Index is 1-based per IAB spec.
+        /// Per TCF v2.2, only Purposes 2, 7, 8, 9, 10, 11 allow Legitimate Interest
+        /// (Purposes 1, 3, 4, 5, 6 are consent-only).
+        /// Used for Google Consent Mode: ad_user_data / analytics_storage may rely on
+        /// Purpose 7 / 8 LI when explicit consent is absent but vendor LI is granted.
+        /// </summary>
+        public static bool IsPurposeLegitimateInterestGranted(int purposeId) {
+            string pLi = ReadTcfString("IABTCF_PurposeLegitimateInterests");
+            if (purposeId > 0 && purposeId <= pLi.Length) {
+                return pLi[purposeId - 1] == '1';
+            }
+            return false;
+        }
+
+        /// <summary>
         /// Check if a specific TCF Vendor has been granted consent.
         /// Index is 1-based per IAB spec.
         /// Only works for vendors in the Global Vendor List (GVL).
@@ -53,6 +69,21 @@ namespace ArcherStudio.SDK.Consent {
             string vConsents = ReadTcfString("IABTCF_VendorConsents");
             if (vendorId > 0 && vendorId <= vConsents.Length) {
                 return vConsents[vendorId - 1] == '1';
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// Check if a specific TCF Vendor is processing data under Legitimate Interest.
+        /// Index is 1-based per IAB spec.
+        /// Required for correct Google Consent Mode mapping:
+        /// ad_user_data / analytics_storage may be granted when the user accepts
+        /// Purpose 7/8 LI and Vendor 755 LI even without explicit consent.
+        /// </summary>
+        public static bool IsVendorLegitimateInterestGranted(int vendorId) {
+            string vLi = ReadTcfString("IABTCF_VendorLegitimateInterests");
+            if (vendorId > 0 && vendorId <= vLi.Length) {
+                return vLi[vendorId - 1] == '1';
             }
             return false;
         }
@@ -110,6 +141,13 @@ namespace ArcherStudio.SDK.Consent {
         /// </summary>
         public static string ReadPurposeConsentsRaw() {
             return ReadTcfString("IABTCF_PurposeConsents");
+        }
+
+        /// <summary>
+        /// Get raw IABTCF_PurposeLegitimateInterests binary string for debug logging.
+        /// </summary>
+        public static string ReadPurposeLegitimateInterestsRaw() {
+            return ReadTcfString("IABTCF_PurposeLegitimateInterests");
         }
 
         /// <summary>

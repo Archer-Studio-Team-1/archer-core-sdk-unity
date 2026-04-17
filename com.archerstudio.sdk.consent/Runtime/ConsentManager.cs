@@ -300,12 +300,26 @@ namespace ArcherStudio.SDK.Consent {
             SDKLogger.Info(Tag, $"║     Purpose 9 (market research):{ConsentHelper.IsPurposeGranted(9)}");
             SDKLogger.Info(Tag, $"║     Purpose 10 (dev/improve):   {ConsentHelper.IsPurposeGranted(10)}");
 
+            string purposeLi = ConsentHelper.ReadPurposeLegitimateInterestsRaw();
+            SDKLogger.Info(Tag, $"║   IABTCF_PurposeLegitimateInterests: {(string.IsNullOrEmpty(purposeLi) ? "(empty)" : purposeLi)}");
+            SDKLogger.Info(Tag, $"║     Purpose 7  LI (ad measurement):  {ConsentHelper.IsPurposeLegitimateInterestGranted(7)}");
+            SDKLogger.Info(Tag, $"║     Purpose 8  LI (product analytics): {ConsentHelper.IsPurposeLegitimateInterestGranted(8)}");
+            SDKLogger.Info(Tag, $"║     Purpose 9  LI (market research):  {ConsentHelper.IsPurposeLegitimateInterestGranted(9)}");
+            SDKLogger.Info(Tag, $"║     Purpose 10 LI (dev/improve):      {ConsentHelper.IsPurposeLegitimateInterestGranted(10)}");
+
             SDKLogger.Info(Tag, "║ ── Key Vendor Consent ──");
             SDKLogger.Info(Tag, $"║     Vendor 31  (Meta/Facebook):  {ConsentHelper.IsVendorGranted(31)}");
             SDKLogger.Info(Tag, $"║     Vendor 32  (Unity Ads):      {ConsentHelper.IsVendorGranted(32)}");
             SDKLogger.Info(Tag, $"║     Vendor 35  (Vungle):         {ConsentHelper.IsVendorGranted(35)}");
             SDKLogger.Info(Tag, $"║     Vendor 702 (Mintegral):      {ConsentHelper.IsVendorGranted(702)}");
             SDKLogger.Info(Tag, $"║     Vendor 755 (Google Ads):     {ConsentHelper.IsVendorGranted(755)}");
+
+            SDKLogger.Info(Tag, "║ ── Key Vendor Legitimate Interest ──");
+            SDKLogger.Info(Tag, $"║     Vendor 31  (Meta/Facebook)  LI: {ConsentHelper.IsVendorLegitimateInterestGranted(31)}");
+            SDKLogger.Info(Tag, $"║     Vendor 32  (Unity Ads)      LI: {ConsentHelper.IsVendorLegitimateInterestGranted(32)}");
+            SDKLogger.Info(Tag, $"║     Vendor 35  (Vungle)         LI: {ConsentHelper.IsVendorLegitimateInterestGranted(35)}");
+            SDKLogger.Info(Tag, $"║     Vendor 702 (Mintegral)      LI: {ConsentHelper.IsVendorLegitimateInterestGranted(702)}");
+            SDKLogger.Info(Tag, $"║     Vendor 755 (Google Ads)     LI: {ConsentHelper.IsVendorLegitimateInterestGranted(755)}");
 
             string acString = ConsentHelper.GetAdditionalConsentString();
             SDKLogger.Info(Tag, $"║   IABTCF_AddtlConsent:   {(string.IsNullOrEmpty(acString) ? "(empty)" : acString)}");
