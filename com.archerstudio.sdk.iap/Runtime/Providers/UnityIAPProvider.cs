@@ -50,6 +50,9 @@ namespace ArcherStudio.SDK.IAP {
         private int _fetchGeneration; // Tracks which fetch attempt is "current"
         private float _fetchTimeoutSeconds;
 
+        // IAP v5: active subscription product IDs, refreshed from FetchPurchases results
+        private readonly HashSet<string> _activeSubscriptions = new HashSet<string>();
+
         public bool IsInitialized => _initialized;
 
         // ─── IIAPProvider ───
@@ -175,6 +178,38 @@ namespace ArcherStudio.SDK.IAP {
             var product = _controller.GetProductById(productId);
             if (product == null || !product.availableToPurchase) return null;
             return MapProduct(product);
+        }
+
+        /// <summary>
+        /// IAP v5: SubscriptionManager was removed in v5.2.1. Subscription state is now
+        /// derived exclusively from the orders cache populated by FetchPurchases.
+        /// A product in _activeSubscriptions means the store currently has an active order
+        /// for it (PendingOrder or ConfirmedOrder from the last FetchPurchases call).
+        /// Detailed fields (ExpirationDate, etc.) require server-side receipt validation.
+        /// </summary>
+        public SubscriptionInfo? GetSubscriptionInfo(string productId) {
+            if (!_initialized || _controller == null) return null;
+
+            var product = _controller.GetProductById(productId);
+            if (product == null || product.definition.type != UnityEngine.Purchasing.ProductType.Subscription)
+                return null;
+
+            if (!product.availableToPurchase) return null;
+
+            bool isActive = _activeSubscriptions.Contains(productId);
+            return new SubscriptionInfo(
+                productId,
+                isSubscribed: isActive,
+                isExpired: !isActive,
+                isCancelled: false,
+                isFreeTrial: false,
+                isIntroductoryPricePeriod: false,
+                isAutoRenewing: isActive,
+                expirationDate: null,
+                purchaseDate: null,
+                cancellationDate: null,
+                remainingTime: null,
+                subscriptionPeriod: null);
         }
 
         public void Dispose() {
@@ -389,6 +424,9 @@ namespace ArcherStudio.SDK.IAP {
                 $"Purchases fetched: {pendingCount} pending, " +
                 $"{confirmedCount} confirmed, {deferredCount} deferred.");
 
+            // IAP v5: refresh subscription cache from current order state
+            RefreshSubscriptionCache(orders.PendingOrders, orders.ConfirmedOrders);
+
             // Log pending orders (auto-processed by ProcessPendingOrdersOnPurchasesFetched)
             if (orders.PendingOrders != null) {
                 foreach (var order in orders.PendingOrders) {
@@ -466,6 +504,11 @@ namespace ArcherStudio.SDK.IAP {
             var info = pendingOrder.Info;
 
             SDKLogger.Info(Tag, $"Purchase pending: {productId} (txn: {info.TransactionID})");
+
+            // Track new subscription purchase immediately (before next FetchPurchases)
+            if (product.definition.type == UnityEngine.Purchasing.ProductType.Subscription) {
+                _activeSubscriptions.Add(productId);
+            }
 
             // Build result while receipt is still available (v5: receipt is only on PendingOrder)
             var result = PurchaseResult.Succeeded(productId, info.TransactionID, info.Receipt);
@@ -551,6 +594,43 @@ namespace ArcherStudio.SDK.IAP {
                 SDKLogger.Warning(Tag,
                     "Store disconnection is not retryable. " +
                     "IAP will be unavailable until app restart.");
+            }
+        }
+
+        // ─── Subscription Cache ───
+
+        /// <summary>
+        /// Rebuilds _activeSubscriptions from the latest FetchPurchases result.
+        /// Pending orders (not yet confirmed) and confirmed orders both indicate an active subscription.
+        /// </summary>
+        private void RefreshSubscriptionCache(
+            IReadOnlyList<PendingOrder> pendingOrders,
+            IReadOnlyList<Order> confirmedOrders) {
+            _activeSubscriptions.Clear();
+
+            if (pendingOrders != null) {
+                foreach (var order in pendingOrders) {
+                    TryAddSubscription(order.CartOrdered.Items());
+                }
+            }
+
+            if (confirmedOrders != null) {
+                foreach (var order in confirmedOrders) {
+                    TryAddSubscription(order.CartOrdered.Items());
+                }
+            }
+
+            if (_activeSubscriptions.Count > 0) {
+                SDKLogger.Info(Tag,
+                    $"Active subscriptions: [{string.Join(", ", _activeSubscriptions)}]");
+            }
+        }
+
+        private void TryAddSubscription(IReadOnlyList<CartItem> items) {
+            if (items == null || items.Count == 0) return;
+            var product = items[0].Product;
+            if (product.definition.type == UnityEngine.Purchasing.ProductType.Subscription) {
+                _activeSubscriptions.Add(product.definition.id);
             }
         }
 

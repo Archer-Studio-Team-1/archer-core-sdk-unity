@@ -34,6 +34,8 @@ namespace ArcherStudio.SDK.IAP {
 
         public ProductInfo? GetProduct(string productId) => null;
 
+        public SubscriptionInfo? GetSubscriptionInfo(string productId) => null;
+
         public void Dispose() {
             IsInitialized = false;
         }

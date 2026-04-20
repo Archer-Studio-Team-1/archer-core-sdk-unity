@@ -83,4 +83,55 @@ namespace ArcherStudio.SDK.IAP {
             ErrorMessage = errorMessage;
         }
     }
+
+    /// <summary>
+    /// Immutable snapshot of subscription status for a single product.
+    /// Queried via IAPManager.GetSubscriptionInfo(productId).
+    /// </summary>
+    public readonly struct SubscriptionInfo {
+        public string ProductId { get; }
+
+        /// <summary>True when subscription is active and not expired.</summary>
+        public bool IsSubscribed { get; }
+        public bool IsExpired { get; }
+        public bool IsCancelled { get; }
+        public bool IsFreeTrial { get; }
+        public bool IsIntroductoryPricePeriod { get; }
+        public bool IsAutoRenewing { get; }
+
+        public System.DateTime? ExpirationDate { get; }
+        public System.DateTime? PurchaseDate { get; }
+        public System.DateTime? CancellationDate { get; }
+        public System.TimeSpan? RemainingTime { get; }
+
+        /// <summary>ISO 8601 period string, e.g. "P1W" (7 days), "P1M" (1 month).</summary>
+        public string SubscriptionPeriod { get; }
+
+        public SubscriptionInfo(
+            string productId,
+            bool isSubscribed,
+            bool isExpired,
+            bool isCancelled,
+            bool isFreeTrial,
+            bool isIntroductoryPricePeriod,
+            bool isAutoRenewing,
+            System.DateTime? expirationDate,
+            System.DateTime? purchaseDate,
+            System.DateTime? cancellationDate,
+            System.TimeSpan? remainingTime,
+            string subscriptionPeriod) {
+            ProductId = productId;
+            IsSubscribed = isSubscribed;
+            IsExpired = isExpired;
+            IsCancelled = isCancelled;
+            IsFreeTrial = isFreeTrial;
+            IsIntroductoryPricePeriod = isIntroductoryPricePeriod;
+            IsAutoRenewing = isAutoRenewing;
+            ExpirationDate = expirationDate;
+            PurchaseDate = purchaseDate;
+            CancellationDate = cancellationDate;
+            RemainingTime = remainingTime;
+            SubscriptionPeriod = subscriptionPeriod;
+        }
+    }
 }

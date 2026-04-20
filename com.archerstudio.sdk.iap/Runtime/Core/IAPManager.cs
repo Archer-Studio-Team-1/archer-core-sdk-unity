@@ -201,6 +201,36 @@ namespace ArcherStudio.SDK.IAP {
             _receiptValidator = validator;
         }
 
+        /// <summary>
+        /// Get subscription status for a subscription product.
+        /// Returns null if product is not a subscription, has no receipt, or IAP not ready.
+        /// </summary>
+        public SubscriptionInfo? GetSubscriptionInfo(string productId) {
+            if (State != ModuleState.Ready) return null;
+            return _provider?.GetSubscriptionInfo(productId);
+        }
+
+        /// <summary>
+        /// Returns true if the subscription is currently active and not expired.
+        /// </summary>
+        public bool IsSubscribed(string productId) {
+            var info = GetSubscriptionInfo(productId);
+            return info.HasValue && info.Value.IsSubscribed;
+        }
+
+        /// <summary>
+        /// Opens the platform's subscription management page so the user can cancel or manage.
+        /// </summary>
+        public void OpenSubscriptionManagement() {
+            #if UNITY_IOS
+            Application.OpenURL("https://apps.apple.com/account/subscriptions");
+            #elif UNITY_ANDROID
+            Application.OpenURL("https://play.google.com/store/account/subscriptions");
+            #else
+            SDKLogger.Warning(Tag, "OpenSubscriptionManagement: not supported on this platform.");
+            #endif
+        }
+
         // ─── IAP Revenue Tracking ───
 
         /// <summary>

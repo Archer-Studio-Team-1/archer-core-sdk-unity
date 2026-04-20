@@ -13,6 +13,7 @@ namespace ArcherStudio.SDK.IAP {
         void RestorePurchases(Action<bool> onComplete);
         IReadOnlyList<ProductInfo> GetProducts();
         ProductInfo? GetProduct(string productId);
+        SubscriptionInfo? GetSubscriptionInfo(string productId);
         bool IsInitialized { get; }
     }
 }

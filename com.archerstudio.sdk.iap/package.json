@@ -1,6 +1,6 @@
 {
   "name": "com.archerstudio.sdk.iap",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "displayName": "Archer Studio SDK - IAP",
   "description": "In-App Purchase management with Unity IAP wrapper, receipt validation, and purchase tracking.",
   "unity": "6000.0",
