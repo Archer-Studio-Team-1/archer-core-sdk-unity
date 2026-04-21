@@ -22,6 +22,7 @@ namespace ArcherStudio.SDK.Core {
 
         [Header("Module Toggles")]
         public bool EnableConsent = true;
+        public bool EnableLogin = false;
         public bool EnableTracking = true;
         public bool EnableAnalytics = true;
         public bool EnableAds = true;

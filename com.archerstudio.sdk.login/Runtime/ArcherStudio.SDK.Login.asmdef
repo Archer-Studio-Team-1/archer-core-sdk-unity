@@ -1,0 +1,23 @@
+{
+  "name": "ArcherStudio.SDK.Login",
+  "rootNamespace": "ArcherStudio.SDK.Login",
+  "references": [
+    "ArcherStudio.SDK.Core",
+    "ArcherStudio.SDK.Consent"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [],
+  "versionDefines": [
+    {
+      "name": "com.google.play.games",
+      "expression": "",
+      "define": "HAS_GPGS"
+    }
+  ],
+  "noEngineReferences": false
+}
