@@ -18,6 +18,7 @@ Internal SDK for mobile game projects. Modular architecture with UPM package dis
 | `com.archerstudio.sdk.deeplink` | Deep linking: Unity, Firebase Dynamic Links, Adjust | core |
 | `com.archerstudio.sdk.push` | Push notifications: Firebase Cloud Messaging | core |
 | `com.archerstudio.sdk.remoteconfig` | Remote Config: Firebase Remote Config, feature flags | core |
+| `com.archerstudio.sdk.cloudsave` | Cloud Save: Firestore-backed save/load with offline cache and conflict resolution | core, login |
 
 ## Dependency Graph
 
@@ -29,7 +30,8 @@ Core (foundation)
 ├── IAP → Core, Consent, Tracking
 ├── DeepLink → Core
 ├── Push → Core
-└── RemoteConfig → Core
+├── RemoteConfig → Core
+└── CloudSave → Core, Login
 ```
 
 ## Installation (UPM Git URL)

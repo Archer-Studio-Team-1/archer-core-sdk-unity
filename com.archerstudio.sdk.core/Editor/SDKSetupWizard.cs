@@ -47,6 +47,7 @@ namespace ArcherStudio.SDK.Core.Editor {
         private bool _enablePush;
         private bool _enableDeepLink;
         private bool _enableTestLab;
+        private bool _enableCloudSave;
 
         [MenuItem("ArcherStudio/SDK/Setup Wizard", false, 0)]
         public static void ShowWindow() {
@@ -92,6 +93,7 @@ namespace ArcherStudio.SDK.Core.Editor {
                 _enablePush = coreConfig.EnablePush;
                 _enableDeepLink = coreConfig.EnableDeepLink;
                 _enableTestLab = coreConfig.EnableTestLab;
+                _enableCloudSave = coreConfig.EnableCloudSave;
             }
 
             var trackingAsset = AssetDatabase.LoadAssetAtPath<ScriptableObject>($"{ResourcesPath}/TrackingConfig.asset");
@@ -196,6 +198,7 @@ namespace ArcherStudio.SDK.Core.Editor {
             _enablePush = EditorGUILayout.Toggle("Push Notifications", _enablePush);
             _enableDeepLink = EditorGUILayout.Toggle("Deep Linking", _enableDeepLink);
             _enableTestLab = EditorGUILayout.Toggle("Firebase Test Lab", _enableTestLab);
+            _enableCloudSave = EditorGUILayout.Toggle("Cloud Save (Firestore)", _enableCloudSave);
 
             EditorGUILayout.Space(8);
             EditorGUILayout.LabelField("Actions", EditorStyles.boldLabel);
@@ -235,6 +238,7 @@ namespace ArcherStudio.SDK.Core.Editor {
             DrawModuleConfigButton("PushConfig", "Push Config", "com.archerstudio.sdk.push");
             DrawModuleConfigButton("DeepLinkConfig", "Deep Link Config", "com.archerstudio.sdk.deeplink");
             DrawModuleConfigButton("TestLabConfig", "Test Lab Config", "com.archerstudio.sdk.testlab");
+            DrawModuleConfigButton("CloudSaveConfig", "Cloud Save Config", "com.archerstudio.sdk.cloudsave");
         }
 
         private void DrawSymbolsTab() {
@@ -460,15 +464,16 @@ namespace ArcherStudio.SDK.Core.Editor {
         }
 
         private struct ModuleToggles {
-            public bool Consent, Login, Tracking, Analytics, Ads, IAP, RemoteConfig, Push, DeepLink, TestLab;
-            public ModuleToggles(bool allOn = true) { Consent = Tracking = Analytics = Ads = IAP = RemoteConfig = allOn; Login = Push = DeepLink = TestLab = false; }
+            public bool Consent, Login, Tracking, Analytics, Ads, IAP, RemoteConfig, Push, DeepLink, TestLab, CloudSave;
+            public ModuleToggles(bool allOn = true) { Consent = Tracking = Analytics = Ads = IAP = RemoteConfig = allOn; Login = Push = DeepLink = TestLab = CloudSave = false; }
         }
 
         private ModuleToggles GetModuleToggles() {
             return new ModuleToggles {
                 Consent = _enableConsent, Login = _enableLogin, Tracking = _enableTracking, Analytics = _enableAnalytics,
                 Ads = _enableAds, IAP = _enableIAP, RemoteConfig = _enableRemoteConfig,
-                Push = _enablePush, DeepLink = _enableDeepLink, TestLab = _enableTestLab
+                Push = _enablePush, DeepLink = _enableDeepLink, TestLab = _enableTestLab,
+                CloudSave = _enableCloudSave
             };
         }
 
@@ -486,6 +491,7 @@ namespace ArcherStudio.SDK.Core.Editor {
             if (toggles.Push) count += CreateModuleConfig("PushConfig") ? 1 : 0;
             if (toggles.DeepLink) count += CreateModuleConfig("DeepLinkConfig") ? 1 : 0;
             if (toggles.TestLab) count += CreateModuleConfig("TestLabConfig") ? 1 : 0;
+            if (toggles.CloudSave) count += CreateModuleConfig("CloudSaveConfig") ? 1 : 0;
             return count;
         }
 
@@ -510,7 +516,8 @@ namespace ArcherStudio.SDK.Core.Editor {
                           ?? assembly.GetType($"ArcherStudio.SDK.RemoteConfig.{configName}")
                           ?? assembly.GetType($"ArcherStudio.SDK.Push.{configName}")
                           ?? assembly.GetType($"ArcherStudio.SDK.DeepLink.{configName}")
-                          ?? assembly.GetType($"ArcherStudio.SDK.TestLab.{configName}");
+                          ?? assembly.GetType($"ArcherStudio.SDK.TestLab.{configName}")
+                          ?? assembly.GetType($"ArcherStudio.SDK.CloudSave.{configName}");
                 if (configType != null) break;
             }
             if (configType == null) return false;
@@ -525,6 +532,7 @@ namespace ArcherStudio.SDK.Core.Editor {
                 coreConfig.EnableAnalytics = toggles.Analytics; coreConfig.EnableAds = toggles.Ads; coreConfig.EnableIAP = toggles.IAP;
                 coreConfig.EnableRemoteConfig = toggles.RemoteConfig;
                 coreConfig.EnablePush = toggles.Push; coreConfig.EnableDeepLink = toggles.DeepLink; coreConfig.EnableTestLab = toggles.TestLab;
+                coreConfig.EnableCloudSave = toggles.CloudSave;
                 EditorUtility.SetDirty(coreConfig);
             }
 
