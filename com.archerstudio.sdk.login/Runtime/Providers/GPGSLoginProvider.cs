@@ -105,5 +105,38 @@ namespace ArcherStudio.SDK.Login {
             PlayerId = null;
             DisplayName = null;
         }
+
+        public void GetServerSideAccessCode(string webClientId, Action<string> onComplete) {
+#if HAS_GPGS && (UNITY_ANDROID || UNITY_EDITOR)
+            if (!IsSignedIn) {
+                SDKLogger.Warning(Tag, "GetServerSideAccessCode called but user not signed in.");
+                onComplete?.Invoke(null);
+                return;
+            }
+            if (string.IsNullOrEmpty(webClientId)) {
+                SDKLogger.Warning(Tag, "GetServerSideAccessCode: webClientId is empty.");
+                onComplete?.Invoke(null);
+                return;
+            }
+            try {
+                PlayGamesPlatform.Instance.RequestServerSideAccess(
+                    requestOfflineAccess: false,
+                    callback: code => {
+                        if (string.IsNullOrEmpty(code)) {
+                            SDKLogger.Warning(Tag, "RequestServerSideAccess returned empty code.");
+                        } else {
+                            SDKLogger.Info(Tag, "Server-side access code obtained.");
+                        }
+                        onComplete?.Invoke(code);
+                    });
+            } catch (Exception e) {
+                SDKLogger.Error(Tag, $"RequestServerSideAccess exception: {e.Message}");
+                onComplete?.Invoke(null);
+            }
+#else
+            SDKLogger.Debug(Tag, "HAS_GPGS not defined or not Android/Editor. Stub fallback.");
+            onComplete?.Invoke(null);
+#endif
+        }
     }
 }

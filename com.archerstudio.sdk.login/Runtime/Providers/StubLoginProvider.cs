@@ -25,5 +25,9 @@ namespace ArcherStudio.SDK.Login {
             PlayerId = null;
             DisplayName = null;
         }
+
+        public void GetServerSideAccessCode(string webClientId, Action<string> onComplete) {
+            onComplete?.Invoke(null);
+        }
     }
 }

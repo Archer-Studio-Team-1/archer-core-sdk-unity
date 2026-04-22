@@ -163,6 +163,10 @@ namespace ArcherStudio.SDK.Core {
             SDKEventBus.Unsubscribe<SDKReadyEvent>(OnSDKReady);
         }
 
+        private void OnApplicationPause(bool pauseStatus) {
+            SDKEventBus.Publish(new AppPauseEvent(pauseStatus));
+        }
+
         private void EnsureInitializer() {
             _initializer = SDKInitializer.Instance;
             if (_initializer != null) return;

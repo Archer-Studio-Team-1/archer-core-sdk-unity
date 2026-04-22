@@ -31,5 +31,6 @@ namespace ArcherStudio.SDK.Core {
         public bool EnablePush = false;
         public bool EnableDeepLink = false;
         public bool EnableTestLab = false;
+        public bool EnableCloudSave = false;
     }
 }

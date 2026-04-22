@@ -29,6 +29,7 @@ namespace ArcherStudio.SDK.Core.Editor {
     ///   HAS_FIREBASE_REMOTE_CONFIG -> Firebase.RemoteConfig.FirebaseRemoteConfig
     ///   HAS_FIREBASE_MESSAGING     -> Firebase.Messaging.FirebaseMessaging
     ///   HAS_FIREBASE_DYNAMIC_LINKS -> Firebase.DynamicLinks.DynamicLinks
+    ///   HAS_FIREBASE_FIRESTORE     -> Firebase.Firestore.FirebaseFirestore
     ///   HAS_ADJUST_SDK             -> AdjustSdk.Adjust
     ///   HAS_APPLOVIN_MAX_SDK       -> MaxSdkBase
     ///   HAS_GOOGLE_UMP             -> GoogleMobileAds.Ump.Api.ConsentInformation
@@ -78,6 +79,7 @@ namespace ArcherStudio.SDK.Core.Editor {
             new SDKSymbolEntry("HAS_FIREBASE_REMOTE_CONFIG", "Firebase.RemoteConfig.FirebaseRemoteConfig", "Firebase Remote Config"),
             new SDKSymbolEntry("HAS_FIREBASE_MESSAGING",     "Firebase.Messaging.FirebaseMessaging",       "Firebase Cloud Messaging"),
             new SDKSymbolEntry("HAS_FIREBASE_DYNAMIC_LINKS", "Firebase.DynamicLinks.DynamicLinks",         "Firebase Dynamic Links"),
+            new SDKSymbolEntry("HAS_FIREBASE_FIRESTORE",     "Firebase.Firestore.FirebaseFirestore",        "Firebase Firestore"),
 
             // Attribution & Mediation
             new SDKSymbolEntry("HAS_ADJUST_SDK",             "AdjustSdk.Adjust",                           "Adjust SDK v5"),

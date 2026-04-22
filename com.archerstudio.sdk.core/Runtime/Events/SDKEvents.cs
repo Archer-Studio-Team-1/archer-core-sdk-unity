@@ -54,4 +54,16 @@ namespace ArcherStudio.SDK.Core {
             FailedModules = failedModules;
         }
     }
+
+    /// <summary>
+    /// Published when the application pauses or resumes (OnApplicationPause relay).
+    /// CloudSave and other modules subscribe to flush pending writes on pause.
+    /// </summary>
+    public readonly struct AppPauseEvent : ISDKEvent {
+        public bool IsPaused { get; }
+
+        public AppPauseEvent(bool isPaused) {
+            IsPaused = isPaused;
+        }
+    }
 }

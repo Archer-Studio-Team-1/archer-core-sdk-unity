@@ -24,5 +24,13 @@ namespace ArcherStudio.SDK.Login {
         /// xóa cache in-memory; user sign-out thật qua cài đặt Google Play.
         /// </summary>
         void SignOut();
+
+        /// <summary>
+        /// Requests a server-side access code (OAuth authorization code) from GPGS.
+        /// CloudSave module uses this code to sign into Firebase Auth via
+        /// PlayGamesAuthProvider.GetCredential(serverAuthCode).
+        /// Returns null if not signed in or provider doesn't support it.
+        /// </summary>
+        void GetServerSideAccessCode(string webClientId, Action<string> onComplete);
     }
 }
