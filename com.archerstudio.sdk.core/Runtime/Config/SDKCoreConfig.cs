@@ -2,6 +2,11 @@ using UnityEngine;
 
 namespace ArcherStudio.SDK.Core {
 
+    public enum SDKEnvironment {
+        Development,
+        Production
+    }
+
     /// <summary>
     /// Master configuration for the entire SDK.
     /// Create via: Assets > Create > ArcherStudio > SDK > Core Config.
@@ -11,6 +16,9 @@ namespace ArcherStudio.SDK.Core {
     public class SDKCoreConfig : ScriptableObject {
 
         [Header("General")]
+        [Tooltip("Target environment (affects Firebase config and tracking).")]
+        public SDKEnvironment Environment = SDKEnvironment.Development;
+
         [Tooltip("Application identifier used across SDK modules.")]
         public string AppId;
 

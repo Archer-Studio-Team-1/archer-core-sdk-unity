@@ -1,29 +1,33 @@
+using System;
 using System.IO;
 using System.Collections.Generic;
+using System.Linq;
+using System.Text.RegularExpressions;
 using UnityEditor;
-using UnityEditor.SceneManagement;
 using UnityEngine;
-using UnityEngine.SceneManagement;
+using Object = UnityEngine.Object;
 
 namespace ArcherStudio.SDK.Core.Editor {
 
     /// <summary>
-    /// Editor wizard to auto-create SDK configs and provide setup guidance.
+    /// Consolidated SDK Wizard for configuration, symbols, package sources and validation.
     /// Menu: ArcherStudio > SDK > Setup Wizard
     /// </summary>
     public class SDKSetupWizard : EditorWindow {
         private const string Tag = "SDKSetupWizard";
         private const string ResourcesPath = "Assets/Resources";
+        private const string PackagePrefix = "com.archerstudio.sdk.";
 
         // ─── Wizard State ───
         private Vector2 _scrollPos;
         private int _currentTab;
         private readonly string[] _tabNames = {
-            "Quick Setup", "Configs", "Symbols", "Validate"
+            "Quick Setup", "Configs", "Symbols", "Sources", "Validate"
         };
 
         // ─── Quick Setup toggles ───
         private bool _createConfigs = true;
+        private SDKEnvironment _environment = SDKEnvironment.Development;
         private string _appId = "";
         private string _adjustToken = "";
         private string _adSdkKey = "";
@@ -35,6 +39,17 @@ namespace ArcherStudio.SDK.Core.Editor {
         private SDKSymbolDetector.SymbolScope _symbolScope = SDKSymbolDetector.SymbolScope.ActiveProfile;
         private readonly List<string> _pendingCustomAdds = new List<string>();
         private readonly List<string> _pendingCustomRemoves = new List<string>();
+
+        // ─── Sources tab state ───
+        private string _gitRepoUrl;
+        private string _gitRef;
+        private string _localRelativePath;
+        private List<PackageEntry> _packages = new List<PackageEntry>();
+        private SourceMode _currentSourceMode = SourceMode.Unknown;
+        private string _manifestPath;
+
+        private enum SourceMode { Unknown, Local, Git, Mixed }
+        private enum PendingAction { None, Add, Remove }
 
         // ─── Module toggles ───
         private bool _enableConsent = true;
@@ -52,13 +67,12 @@ namespace ArcherStudio.SDK.Core.Editor {
         [MenuItem("ArcherStudio/SDK/Setup Wizard", false, 0)]
         public static void ShowWindow() {
             var window = GetWindow<SDKSetupWizard>("SDK Setup Wizard");
-            window.minSize = new Vector2(560, 620);
+            window.minSize = new Vector2(600, 650);
             window.Show();
         }
 
         public static void ShowTab(int tabIndex) {
             var window = GetWindow<SDKSetupWizard>("SDK Setup Wizard");
-            window.minSize = new Vector2(560, 620);
             window._currentTab = tabIndex;
             window.Show();
             window.Repaint();
@@ -66,69 +80,12 @@ namespace ArcherStudio.SDK.Core.Editor {
 
         private void OnEnable() {
             LoadFromExistingConfigs();
+            InitializeSourceSwitcher();
         }
 
         private void OnFocus() {
-            if (_currentTab == 2) {
-                RefreshSymbolRows();
-            }
-        }
-
-        /// <summary>
-        /// Đọc giá trị từ các config asset hiện có trong Assets/Resources/ vào
-        /// UI state để Quick Setup phản ánh đúng trạng thái project (tạo mới nếu
-        /// thiếu, chỉnh sửa nếu đã có).
-        /// </summary>
-        private void LoadFromExistingConfigs() {
-            var coreConfig = AssetDatabase.LoadAssetAtPath<SDKCoreConfig>($"{ResourcesPath}/SDKCoreConfig.asset");
-            if (coreConfig != null) {
-                _appId = coreConfig.AppId ?? "";
-                _enableConsent = coreConfig.EnableConsent;
-                _enableLogin = coreConfig.EnableLogin;
-                _enableTracking = coreConfig.EnableTracking;
-                _enableAnalytics = coreConfig.EnableAnalytics;
-                _enableAds = coreConfig.EnableAds;
-                _enableIAP = coreConfig.EnableIAP;
-                _enableRemoteConfig = coreConfig.EnableRemoteConfig;
-                _enablePush = coreConfig.EnablePush;
-                _enableDeepLink = coreConfig.EnableDeepLink;
-                _enableTestLab = coreConfig.EnableTestLab;
-                _enableCloudSave = coreConfig.EnableCloudSave;
-            }
-
-            var trackingAsset = AssetDatabase.LoadAssetAtPath<ScriptableObject>($"{ResourcesPath}/TrackingConfig.asset");
-            if (trackingAsset != null) {
-                var field = trackingAsset.GetType().GetField("AdjustAppToken");
-                if (field != null) {
-                    var value = field.GetValue(trackingAsset) as string;
-                    if (!string.IsNullOrEmpty(value)) _adjustToken = value;
-                }
-            }
-
-            var adAsset = AssetDatabase.LoadAssetAtPath<ScriptableObject>($"{ResourcesPath}/AdConfig.asset");
-            if (adAsset != null) {
-                var field = adAsset.GetType().GetField("SdkKey");
-                if (field != null) {
-                    var value = field.GetValue(adAsset) as string;
-                    if (!string.IsNullOrEmpty(value)) _adSdkKey = value;
-                }
-            }
-        }
-
-        [MenuItem("ArcherStudio/SDK/Create All Configs", false, 21)]
-        public static void MenuCreateConfigs() {
-            CreateAllConfigs(new ModuleToggles());
-        }
-
-        [MenuItem("ArcherStudio/SDK/Validate Setup", false, 40)]
-        public static void MenuValidate() {
-            var issues = ValidateSetup();
-            if (issues.Count == 0) {
-                EditorUtility.DisplayDialog("SDK Validation", "All checks passed!", "OK");
-            } else {
-                string msg = string.Join("\n", issues);
-                EditorUtility.DisplayDialog("SDK Validation", $"Issues found:\n\n{msg}", "OK");
-            }
+            if (_currentTab == 2) RefreshSymbolRows();
+            if (_currentTab == 3) RefreshPackageSources();
         }
 
         private void OnGUI() {
@@ -143,7 +100,8 @@ namespace ArcherStudio.SDK.Core.Editor {
                 case 0: DrawQuickSetup(); break;
                 case 1: DrawConfigsTab(); break;
                 case 2: DrawSymbolsTab(); break;
-                case 3: DrawValidateTab(); break;
+                case 3: DrawSourcesTab(); break;
+                case 4: DrawValidateTab(); break;
             }
 
             EditorGUILayout.EndScrollView();
@@ -159,6 +117,10 @@ namespace ArcherStudio.SDK.Core.Editor {
             EditorGUILayout.Space(4);
             EditorGUILayout.LabelField("", GUI.skin.horizontalSlider);
         }
+
+        // ═══════════════════════════════════════════════════════
+        //  TAB 0: Quick Setup
+        // ═══════════════════════════════════════════════════════
 
         private void DrawQuickSetup() {
             EditorGUILayout.LabelField("Quick Setup", EditorStyles.boldLabel);
@@ -179,6 +141,14 @@ namespace ArcherStudio.SDK.Core.Editor {
                 LoadFromExistingConfigs();
             }
             EditorGUILayout.EndHorizontal();
+
+            EditorGUILayout.Space(8);
+            EditorGUILayout.LabelField("Environment", EditorStyles.boldLabel);
+            EditorGUI.BeginChangeCheck();
+            _environment = (SDKEnvironment)EditorGUILayout.EnumPopup("Target Environment", _environment);
+            if (EditorGUI.EndChangeCheck()) {
+                SDKFirebaseSwitcher.SwitchEnvironment(_environment);
+            }
 
             EditorGUILayout.Space(8);
             EditorGUILayout.LabelField("App Settings", EditorStyles.boldLabel);
@@ -213,22 +183,23 @@ namespace ArcherStudio.SDK.Core.Editor {
             GUI.backgroundColor = Color.white;
         }
 
+        // ═══════════════════════════════════════════════════════
+        //  TAB 1: Configs
+        // ═══════════════════════════════════════════════════════
+
         private void DrawConfigsTab() {
             EditorGUILayout.LabelField("Config Assets", EditorStyles.boldLabel);
             EditorGUILayout.HelpBox(
-                "Create individual config assets in Assets/Resources/. " +
-                "Existing configs will NOT be overwritten.\n" +
+                "Create individual config assets in Assets/Resources/. Existing configs will NOT be overwritten.\n" +
                 "Nhấn 'Import Lib' để cài thư viện bên thứ ba (UPM hoặc mở trang tải .unitypackage).",
                 MessageType.Info);
 
             EditorGUILayout.Space(8);
-
             DrawConfigButton<SDKCoreConfig>("SDKCoreConfig", "Core Config (required)");
             DrawConfigButton<SDKBootstrapConfig>("SDKBootstrapConfig", "Bootstrap Config (required)");
 
             EditorGUILayout.Space(4);
             EditorGUILayout.LabelField("Module Configs", EditorStyles.boldLabel);
-
             DrawModuleConfigButton("ConsentConfig", "Consent Config", "com.archerstudio.sdk.consent");
             DrawModuleConfigButton("LoginConfig", "Login Config", "com.archerstudio.sdk.login");
             DrawModuleConfigButton("TrackingConfig", "Tracking Config", "com.archerstudio.sdk.tracking");
@@ -241,6 +212,10 @@ namespace ArcherStudio.SDK.Core.Editor {
             DrawModuleConfigButton("CloudSaveConfig", "Cloud Save Config", "com.archerstudio.sdk.cloudsave");
         }
 
+        // ═══════════════════════════════════════════════════════
+        //  TAB 2: Symbols
+        // ═══════════════════════════════════════════════════════
+
         private void DrawSymbolsTab() {
             EditorGUILayout.LabelField("SDK Scripting Define Symbols", EditorStyles.boldLabel);
 
@@ -250,33 +225,14 @@ namespace ArcherStudio.SDK.Core.Editor {
             _symbolScope = (SDKSymbolDetector.SymbolScope)EditorGUILayout.EnumPopup(_symbolScope);
             EditorGUILayout.EndHorizontal();
 
-            string scopeDesc = "";
-            switch (_symbolScope) {
-                case SDKSymbolDetector.SymbolScope.ActiveProfile:
-                    scopeDesc = "Symbols are applied to the Active Build Profile only.";
-                    break;
-                case SDKSymbolDetector.SymbolScope.ActivePlatform:
-                    scopeDesc = "Symbols are applied to the active platform's PlayerSettings.";
-                    break;
-                case SDKSymbolDetector.SymbolScope.AllMobilePlatforms:
-                    scopeDesc = "Symbols are applied to both Android and iOS PlayerSettings.";
-                    break;
-            }
-            EditorGUILayout.HelpBox(scopeDesc, MessageType.Info);
-
             EditorGUILayout.Space(4);
             var targetLabel = SDKSymbolDetector.GetScopeLabel(_symbolScope);
             EditorGUILayout.LabelField($"Target: {targetLabel}", EditorStyles.miniLabel);
 
             EditorGUILayout.Space(4);
             EditorGUILayout.BeginHorizontal();
-            EditorGUILayout.HelpBox(
-                "Green = OK  |  Red = SDK found, symbol missing  |  " +
-                "Yellow = symbol defined, SDK removed  |  Gray = not installed",
-                MessageType.None);
-            if (GUILayout.Button("Refresh", GUILayout.Width(70), GUILayout.Height(38))) {
-                RefreshSymbolRows();
-            }
+            EditorGUILayout.HelpBox("Green=OK | Red=Missing | Yellow=Orphan | Gray=Not Installed", MessageType.None);
+            if (GUILayout.Button("Refresh", GUILayout.Width(70), GUILayout.Height(38))) RefreshSymbolRows();
             EditorGUILayout.EndHorizontal();
 
             EditorGUILayout.Space(4);
@@ -288,345 +244,373 @@ namespace ArcherStudio.SDK.Core.Editor {
             GUI.backgroundColor = Color.white;
 
             EditorGUILayout.Space(4);
-            DrawBulkActionsToolbar();
-
+            DrawBulkSymbolsToolbar();
             EditorGUILayout.Space(8);
             DrawSymbolTableHeader();
 
             if (_symbolRows == null) RefreshSymbolRows();
             foreach (var row in _symbolRows) DrawSymbolRow(row);
+        }
 
-            DrawPendingChangesBar();
+        // ═══════════════════════════════════════════════════════
+        //  TAB 3: Sources (Package Source Switcher)
+        // ═══════════════════════════════════════════════════════
+
+        private void DrawSourcesTab() {
+            EditorGUILayout.LabelField("SDK Source Switcher", EditorStyles.boldLabel);
+            EditorGUILayout.HelpBox("Switch all com.archerstudio.sdk.* packages between local (file:) and git sources.", MessageType.Info);
+
             EditorGUILayout.Space(8);
-            DrawCustomSymbolSection();
+            DrawSourceStatus();
+            EditorGUILayout.Space(8);
+            DrawSourceSettings();
+            EditorGUILayout.Space(8);
+            DrawSourceBulkButtons();
+            EditorGUILayout.Space(12);
+            DrawPackageSourceList();
         }
 
-        private void RefreshSymbolRows() {
-            _symbolRows = new List<SymbolRow>();
-            foreach (var entry in SDKSymbolDetector.Entries) {
-                _symbolRows.Add(new SymbolRow {
-                    Symbol = entry.Symbol,
-                    DisplayName = entry.DisplayName,
-                    DetectionType = entry.DetectionType,
-                    IsDetected = SDKSymbolDetector.IsSDKDetected(entry.Symbol),
-                    IsDefined = SDKSymbolDetector.IsSymbolDefined(entry.Symbol, _symbolScope),
-                });
-            }
-        }
-
-        private static void DrawSymbolTableHeader() {
-            EditorGUILayout.BeginHorizontal(EditorStyles.toolbar);
-            GUILayout.Label("", GUILayout.Width(18));
-            GUILayout.Label("Symbol", EditorStyles.miniLabel, GUILayout.Width(180));
-            GUILayout.Label("SDK", EditorStyles.miniLabel, GUILayout.Width(140));
-            GUILayout.Label("Detected", EditorStyles.miniLabel, GUILayout.Width(55));
-            GUILayout.Label("Defined", EditorStyles.miniLabel, GUILayout.Width(55));
-            GUILayout.Label("Pending", EditorStyles.miniLabel, GUILayout.Width(55));
-            GUILayout.FlexibleSpace();
-            GUILayout.Label("Action", EditorStyles.miniLabel, GUILayout.Width(130));
-            EditorGUILayout.EndHorizontal();
-        }
-
-        private void DrawSymbolRow(SymbolRow row) {
-            Color statusColor;
-            string statusIcon;
-            if (row.IsDetected && row.IsDefined) {
-                statusColor = new Color(0.3f, 0.8f, 0.3f); statusIcon = "\u2714";
-            } else if (row.IsDetected && !row.IsDefined) {
-                statusColor = new Color(0.9f, 0.3f, 0.3f); statusIcon = "\u2718";
-            } else if (!row.IsDetected && row.IsDefined) {
-                statusColor = new Color(0.9f, 0.8f, 0.2f); statusIcon = "\u26A0";
-            } else {
-                statusColor = new Color(0.5f, 0.5f, 0.5f); statusIcon = "\u2014";
-            }
-
-            EditorGUILayout.BeginHorizontal(EditorStyles.helpBox);
-            var prevColor = GUI.contentColor;
-            GUI.contentColor = statusColor;
-            GUILayout.Label(statusIcon, GUILayout.Width(18));
-            GUI.contentColor = prevColor;
-
-            EditorGUILayout.SelectableLabel(row.Symbol, EditorStyles.label, GUILayout.Width(180), GUILayout.Height(EditorGUIUtility.singleLineHeight));
-            GUILayout.Label(row.DisplayName, GUILayout.Width(140));
-
-            prevColor = GUI.contentColor;
-            GUI.contentColor = row.IsDetected ? Color.green : Color.gray;
-            GUILayout.Label(row.IsDetected ? "Yes" : "No", GUILayout.Width(55));
-            GUI.contentColor = row.IsDefined ? Color.green : Color.gray;
-            GUILayout.Label(row.IsDefined ? "Yes" : "No", GUILayout.Width(55));
-
-            switch (row.Pending) {
-                case PendingAction.Add: GUI.contentColor = new Color(0.3f, 0.9f, 0.3f); GUILayout.Label("+Add", GUILayout.Width(55)); break;
-                case PendingAction.Remove: GUI.contentColor = new Color(0.9f, 0.4f, 0.3f); GUILayout.Label("-Rem", GUILayout.Width(55)); break;
-                default: GUI.contentColor = Color.gray; GUILayout.Label("--", GUILayout.Width(55)); break;
-            }
-            GUI.contentColor = prevColor;
-
-            GUILayout.FlexibleSpace();
-            if (row.Pending != PendingAction.None) {
-                if (GUILayout.Button("Undo", GUILayout.Width(60))) row.Pending = PendingAction.None;
-            }
-
-            if (row.IsDefined) {
-                GUI.enabled = row.Pending != PendingAction.Remove;
-                if (GUILayout.Button("Queue Remove", GUILayout.Width(90))) row.Pending = PendingAction.Remove;
-                GUI.enabled = true;
-            } else {
-                GUI.enabled = row.Pending != PendingAction.Add;
-                if (GUILayout.Button("Queue Add", GUILayout.Width(90))) row.Pending = PendingAction.Add;
-                GUI.enabled = true;
-            }
-            EditorGUILayout.EndHorizontal();
-        }
-
-        private void DrawBulkActionsToolbar() {
+        private void DrawSourceStatus() {
             EditorGUILayout.BeginHorizontal();
-            if (GUILayout.Button("Queue Add All Missing", GUILayout.Height(22))) {
-                if (_symbolRows == null) RefreshSymbolRows();
-                foreach (var row in _symbolRows) if (row.IsDetected && !row.IsDefined) row.Pending = PendingAction.Add;
-            }
-            if (GUILayout.Button("Queue Remove All Orphaned", GUILayout.Height(22))) {
-                if (_symbolRows == null) RefreshSymbolRows();
-                foreach (var row in _symbolRows) if (!row.IsDetected && row.IsDefined) row.Pending = PendingAction.Remove;
-            }
-            if (GUILayout.Button("Clear All Pending", GUILayout.Height(22))) {
-                if (_symbolRows != null) foreach (var row in _symbolRows) row.Pending = PendingAction.None;
-            }
+            EditorGUILayout.LabelField("Current Mode:", EditorStyles.boldLabel, GUILayout.Width(100));
+            var (label, color) = _currentSourceMode switch {
+                SourceMode.Local => ("LOCAL (file:)", new Color(0.3f, 0.8f, 0.3f)),
+                SourceMode.Git => ("GIT (remote)", new Color(0.4f, 0.7f, 1f)),
+                SourceMode.Mixed => ("MIXED", new Color(0.9f, 0.8f, 0.2f)),
+                _ => ("Unknown", Color.gray)
+            };
+            var statusStyle = new GUIStyle(EditorStyles.boldLabel) { normal = { textColor = color }, fontSize = 14 };
+            EditorGUILayout.LabelField(label, statusStyle);
             EditorGUILayout.EndHorizontal();
         }
 
-        private void DrawPendingChangesBar() {
-            if (_symbolRows == null) return;
-            var pendingChanges = new List<SDKSymbolDetector.SymbolChange>();
-            foreach (var row in _symbolRows) {
-                if (row.Pending == PendingAction.Add) pendingChanges.Add(new SDKSymbolDetector.SymbolChange(row.Symbol, true, row.DisplayName));
-                else if (row.Pending == PendingAction.Remove) pendingChanges.Add(new SDKSymbolDetector.SymbolChange(row.Symbol, false, row.DisplayName));
-            }
-            foreach (var sym in _pendingCustomAdds) pendingChanges.Add(new SDKSymbolDetector.SymbolChange(sym, true, "Custom"));
-            foreach (var sym in _pendingCustomRemoves) pendingChanges.Add(new SDKSymbolDetector.SymbolChange(sym, false, "Custom"));
-
-            if (pendingChanges.Count == 0) return;
-
+        private void DrawSourceSettings() {
+            EditorGUILayout.LabelField("Settings", EditorStyles.boldLabel);
+            EditorGUILayout.BeginVertical(EditorStyles.helpBox);
+            EditorGUILayout.LabelField("Git Source", EditorStyles.miniLabel);
+            _gitRepoUrl = EditorGUILayout.TextField("Repository URL", _gitRepoUrl);
+            _gitRef = EditorGUILayout.TextField("Branch / Tag", _gitRef);
             EditorGUILayout.Space(4);
-            GUI.backgroundColor = new Color(0.2f, 0.8f, 0.2f);
-            if (GUILayout.Button($"Apply All ({pendingChanges.Count} changes)", GUILayout.Height(30))) {
-                SDKSymbolDetector.ApplyBulkChanges(pendingChanges, _symbolScope);
-                _pendingCustomAdds.Clear(); _pendingCustomRemoves.Clear();
-                RefreshSymbolRows();
+            EditorGUILayout.LabelField("Local Source", EditorStyles.miniLabel);
+            EditorGUILayout.BeginHorizontal();
+            _localRelativePath = EditorGUILayout.TextField("Relative Path", _localRelativePath);
+            if (GUILayout.Button("Browse", GUILayout.Width(60))) {
+                var abs = EditorUtility.OpenFolderPanel("Select SDK Root Folder", "", "");
+                if (!string.IsNullOrEmpty(abs)) {
+                    var packagesDir = Path.GetFullPath("Packages");
+                    _localRelativePath = GetRelativePath(packagesDir, abs).Replace('\\', '/');
+                }
             }
-            GUI.backgroundColor = Color.white;
+            EditorGUILayout.EndHorizontal();
+            EditorGUILayout.EndVertical();
+
+            // Save settings to EditorPrefs
+            EditorPrefs.SetString("ArcherSDK_GitRepoUrl", _gitRepoUrl);
+            EditorPrefs.SetString("ArcherSDK_GitRef", _gitRef);
+            EditorPrefs.SetString("ArcherSDK_LocalPath", _localRelativePath);
         }
 
-        private void DrawCustomSymbolSection() {
-            _showCustomSection = EditorGUILayout.Foldout(_showCustomSection, "Custom Symbol", true, EditorStyles.foldoutHeader);
-            if (!_showCustomSection) return;
-
+        private void DrawSourceBulkButtons() {
             EditorGUILayout.BeginHorizontal();
-            EditorGUILayout.LabelField("Symbol:", GUILayout.Width(55));
-            _customSymbol = EditorGUILayout.TextField(_customSymbol);
-            GUI.enabled = !string.IsNullOrWhiteSpace(_customSymbol);
-            if (GUILayout.Button("Queue Add", GUILayout.Width(80))) {
-                var sym = _customSymbol.Trim();
-                if (!_pendingCustomAdds.Contains(sym)) { _pendingCustomAdds.Add(sym); _pendingCustomRemoves.Remove(sym); }
-                _customSymbol = "";
+            GUI.enabled = _currentSourceMode != SourceMode.Local;
+            GUI.backgroundColor = new Color(0.3f, 0.8f, 0.3f);
+            if (GUILayout.Button("Switch All to LOCAL", GUILayout.Height(35))) {
+                if (EditorUtility.DisplayDialog("Switch to Local", "Unity will reimport packages. Continue?", "Switch", "Cancel")) SwitchAllSources(toLocal: true);
             }
-            GUI.enabled = true;
+            GUI.enabled = _currentSourceMode != SourceMode.Git;
+            GUI.backgroundColor = new Color(0.4f, 0.7f, 1f);
+            if (GUILayout.Button("Switch All to GIT", GUILayout.Height(35))) {
+                if (EditorUtility.DisplayDialog("Switch to Git", "Unity will reimport packages. Continue?", "Switch", "Cancel")) SwitchAllSources(toLocal: false);
+            }
+            GUI.enabled = true; GUI.backgroundColor = Color.white;
             EditorGUILayout.EndHorizontal();
         }
+
+        private void DrawPackageSourceList() {
+            EditorGUILayout.LabelField($"Packages ({_packages.Count})", EditorStyles.boldLabel);
+            EditorGUILayout.BeginHorizontal(EditorStyles.toolbar);
+            GUILayout.Label("", GUILayout.Width(16));
+            GUILayout.Label("Package", EditorStyles.miniLabel, GUILayout.Width(120));
+            GUILayout.Label("Ver", EditorStyles.miniLabel, GUILayout.Width(45));
+            GUILayout.Label("Git Ref", EditorStyles.miniLabel, GUILayout.Width(80));
+            GUILayout.Label("Source", EditorStyles.miniLabel);
+            GUILayout.Label("", GUILayout.Width(80));
+            EditorGUILayout.EndHorizontal();
+
+            foreach (var pkg in _packages) {
+                EditorGUILayout.BeginHorizontal(EditorStyles.helpBox);
+                GUI.contentColor = pkg.IsLocal ? new Color(0.3f, 0.8f, 0.3f) : new Color(0.4f, 0.7f, 1f);
+                GUILayout.Label(pkg.IsLocal ? "L" : "G", EditorStyles.boldLabel, GUILayout.Width(16));
+                GUI.contentColor = Color.white;
+                EditorGUILayout.LabelField(pkg.Name.Replace(PackagePrefix, ""), EditorStyles.boldLabel, GUILayout.Width(120));
+                EditorGUILayout.LabelField(pkg.InstalledVersion, EditorStyles.miniLabel, GUILayout.Width(45));
+                pkg.GitRef = EditorGUILayout.TextField(pkg.GitRef, GUILayout.Width(80));
+                string disp = pkg.CurrentSource; if (disp.Length > 30) disp = "..." + disp.Substring(disp.Length - 27);
+                EditorGUILayout.LabelField(disp, EditorStyles.miniLabel);
+                if (GUILayout.Button(pkg.IsLocal ? "-> Git" : "-> Local", GUILayout.Width(70))) SwitchSingleSource(pkg, !pkg.IsLocal);
+                EditorGUILayout.EndHorizontal();
+            }
+        }
+
+        // ═══════════════════════════════════════════════════════
+        //  TAB 4: Validate
+        // ═══════════════════════════════════════════════════════
 
         private void DrawValidateTab() {
             EditorGUILayout.LabelField("Validate Setup", EditorStyles.boldLabel);
             if (GUILayout.Button("Run Validation", GUILayout.Height(30))) _validationResults = ValidateSetup();
             if (_validationResults != null) {
                 foreach (var issue in _validationResults) EditorGUILayout.HelpBox(issue, MessageType.Warning);
+                if (_validationResults.Count == 0) EditorGUILayout.HelpBox("All checks passed!", MessageType.Info);
             }
         }
 
-        private List<string> _validationResults;
+        // ═══════════════════════════════════════════════════════
+        //  LOGIC: Configs
+        // ═══════════════════════════════════════════════════════
+
+        private void LoadFromExistingConfigs() {
+            var coreConfig = AssetDatabase.LoadAssetAtPath<SDKCoreConfig>($"{ResourcesPath}/SDKCoreConfig.asset");
+            if (coreConfig != null) {
+                _appId = coreConfig.AppId ?? ""; _environment = coreConfig.Environment;
+                _enableConsent = coreConfig.EnableConsent; _enableLogin = coreConfig.EnableLogin;
+                _enableTracking = coreConfig.EnableTracking; _enableAnalytics = coreConfig.EnableAnalytics;
+                _enableAds = coreConfig.EnableAds; _enableIAP = coreConfig.EnableIAP;
+                _enableRemoteConfig = coreConfig.EnableRemoteConfig; _enablePush = coreConfig.EnablePush;
+                _enableDeepLink = coreConfig.EnableDeepLink; _enableTestLab = coreConfig.EnableTestLab;
+                _enableCloudSave = coreConfig.EnableCloudSave;
+            }
+
+            var trackingAsset = AssetDatabase.LoadAssetAtPath<ScriptableObject>($"{ResourcesPath}/TrackingConfig.asset");
+            if (trackingAsset != null) {
+                var field = trackingAsset.GetType().GetField("AdjustAppToken");
+                if (field != null) _adjustToken = field.GetValue(trackingAsset) as string ?? "";
+            }
+
+            var adAsset = AssetDatabase.LoadAssetAtPath<ScriptableObject>($"{ResourcesPath}/AdConfig.asset");
+            if (adAsset != null) {
+                var field = adAsset.GetType().GetField("SdkKey");
+                if (field != null) _adSdkKey = field.GetValue(adAsset) as string ?? "";
+            }
+        }
 
         private void RunQuickSetup() {
-            bool coreExisted = AssetDatabase.LoadAssetAtPath<SDKCoreConfig>($"{ResourcesPath}/SDKCoreConfig.asset") != null;
-
+            EnsureDirectoryExists(ResourcesPath);
             if (_createConfigs) {
+                CreateConfigIfMissing<SDKCoreConfig>("SDKCoreConfig");
+                CreateConfigIfMissing<SDKBootstrapConfig>("SDKBootstrapConfig");
                 var toggles = GetModuleToggles();
-                CreateAllConfigs(toggles);
+                if (toggles.Consent) CreateModuleConfig("ConsentConfig");
+                if (toggles.Login) CreateModuleConfig("LoginConfig");
+                if (toggles.Tracking) CreateModuleConfig("TrackingConfig");
+                if (toggles.Ads) CreateModuleConfig("AdConfig");
+                if (toggles.IAP) CreateModuleConfig("IAPConfig");
+                if (toggles.RemoteConfig) CreateModuleConfig("RemoteConfigConfig");
+                if (toggles.Push) CreateModuleConfig("PushConfig");
+                if (toggles.DeepLink) CreateModuleConfig("DeepLinkConfig");
+                if (toggles.TestLab) CreateModuleConfig("TestLabConfig");
+                if (toggles.CloudSave) CreateModuleConfig("CloudSaveConfig");
                 ApplyConfigValues(toggles);
             }
-            AssetDatabase.SaveAssets();
-            AssetDatabase.Refresh();
-
-            EditorUtility.DisplayDialog(
-                "SDK Setup Complete",
-                coreExisted
-                    ? "Config assets updated với giá trị mới (tạo thêm nếu thiếu)."
-                    : "Config assets đã được tạo trong Assets/Resources/.",
-                "OK");
-        }
-
-        private struct ModuleToggles {
-            public bool Consent, Login, Tracking, Analytics, Ads, IAP, RemoteConfig, Push, DeepLink, TestLab, CloudSave;
-            public ModuleToggles(bool allOn = true) { Consent = Tracking = Analytics = Ads = IAP = RemoteConfig = allOn; Login = Push = DeepLink = TestLab = CloudSave = false; }
-        }
-
-        private ModuleToggles GetModuleToggles() {
-            return new ModuleToggles {
-                Consent = _enableConsent, Login = _enableLogin, Tracking = _enableTracking, Analytics = _enableAnalytics,
-                Ads = _enableAds, IAP = _enableIAP, RemoteConfig = _enableRemoteConfig,
-                Push = _enablePush, DeepLink = _enableDeepLink, TestLab = _enableTestLab,
-                CloudSave = _enableCloudSave
-            };
-        }
-
-        private static int CreateAllConfigs(ModuleToggles toggles) {
-            EnsureDirectoryExists(ResourcesPath);
-            int count = 0;
-            count += CreateConfigIfMissing<SDKCoreConfig>("SDKCoreConfig") ? 1 : 0;
-            count += CreateConfigIfMissing<SDKBootstrapConfig>("SDKBootstrapConfig") ? 1 : 0;
-            if (toggles.Consent) count += CreateModuleConfig("ConsentConfig") ? 1 : 0;
-            if (toggles.Login) count += CreateModuleConfig("LoginConfig") ? 1 : 0;
-            if (toggles.Tracking) count += CreateModuleConfig("TrackingConfig") ? 1 : 0;
-            if (toggles.Ads) count += CreateModuleConfig("AdConfig") ? 1 : 0;
-            if (toggles.IAP) count += CreateModuleConfig("IAPConfig") ? 1 : 0;
-            if (toggles.RemoteConfig) count += CreateModuleConfig("RemoteConfigConfig") ? 1 : 0;
-            if (toggles.Push) count += CreateModuleConfig("PushConfig") ? 1 : 0;
-            if (toggles.DeepLink) count += CreateModuleConfig("DeepLinkConfig") ? 1 : 0;
-            if (toggles.TestLab) count += CreateModuleConfig("TestLabConfig") ? 1 : 0;
-            if (toggles.CloudSave) count += CreateModuleConfig("CloudSaveConfig") ? 1 : 0;
-            return count;
-        }
-
-        private static bool CreateConfigIfMissing<T>(string name) where T : ScriptableObject {
-            string path = $"{ResourcesPath}/{name}.asset";
-            if (AssetDatabase.LoadAssetAtPath<T>(path) != null) return false;
-            var asset = ScriptableObject.CreateInstance<T>();
-            AssetDatabase.CreateAsset(asset, path);
-            return true;
-        }
-
-        private static bool CreateModuleConfig(string configName) {
-            string path = $"{ResourcesPath}/{configName}.asset";
-            if (File.Exists(Path.GetFullPath(path))) return false;
-            System.Type configType = null;
-            foreach (var assembly in System.AppDomain.CurrentDomain.GetAssemblies()) {
-                configType = assembly.GetType($"ArcherStudio.SDK.Consent.{configName}")
-                          ?? assembly.GetType($"ArcherStudio.SDK.Login.{configName}")
-                          ?? assembly.GetType($"ArcherStudio.SDK.Tracking.{configName}")
-                          ?? assembly.GetType($"ArcherStudio.SDK.Ads.{configName}")
-                          ?? assembly.GetType($"ArcherStudio.SDK.IAP.{configName}")
-                          ?? assembly.GetType($"ArcherStudio.SDK.RemoteConfig.{configName}")
-                          ?? assembly.GetType($"ArcherStudio.SDK.Push.{configName}")
-                          ?? assembly.GetType($"ArcherStudio.SDK.DeepLink.{configName}")
-                          ?? assembly.GetType($"ArcherStudio.SDK.TestLab.{configName}")
-                          ?? assembly.GetType($"ArcherStudio.SDK.CloudSave.{configName}");
-                if (configType != null) break;
-            }
-            if (configType == null) return false;
-            AssetDatabase.CreateAsset(ScriptableObject.CreateInstance(configType), path);
-            return true;
+            AssetDatabase.SaveAssets(); AssetDatabase.Refresh();
+            EditorUtility.DisplayDialog("SDK Setup", "Setup complete. Configs created/updated in Assets/Resources/.", "OK");
         }
 
         private void ApplyConfigValues(ModuleToggles toggles) {
             var coreConfig = AssetDatabase.LoadAssetAtPath<SDKCoreConfig>($"{ResourcesPath}/SDKCoreConfig.asset");
             if (coreConfig != null) {
-                coreConfig.AppId = _appId; coreConfig.EnableConsent = toggles.Consent; coreConfig.EnableLogin = toggles.Login; coreConfig.EnableTracking = toggles.Tracking;
-                coreConfig.EnableAnalytics = toggles.Analytics; coreConfig.EnableAds = toggles.Ads; coreConfig.EnableIAP = toggles.IAP;
-                coreConfig.EnableRemoteConfig = toggles.RemoteConfig;
-                coreConfig.EnablePush = toggles.Push; coreConfig.EnableDeepLink = toggles.DeepLink; coreConfig.EnableTestLab = toggles.TestLab;
+                coreConfig.AppId = _appId; coreConfig.Environment = _environment;
+                coreConfig.EnableConsent = toggles.Consent; coreConfig.EnableLogin = toggles.Login;
+                coreConfig.EnableTracking = toggles.Tracking; coreConfig.EnableAnalytics = toggles.Analytics;
+                coreConfig.EnableAds = toggles.Ads; coreConfig.EnableIAP = toggles.IAP;
+                coreConfig.EnableRemoteConfig = toggles.RemoteConfig; coreConfig.EnablePush = toggles.Push;
+                coreConfig.EnableDeepLink = toggles.DeepLink; coreConfig.EnableTestLab = toggles.TestLab;
                 coreConfig.EnableCloudSave = toggles.CloudSave;
                 EditorUtility.SetDirty(coreConfig);
             }
+            UpdateModuleField("TrackingConfig", "AdjustAppToken", _adjustToken);
+            UpdateModuleField("AdConfig", "SdkKey", _adSdkKey);
+        }
 
-            var trackingAsset = AssetDatabase.LoadAssetAtPath<ScriptableObject>($"{ResourcesPath}/TrackingConfig.asset");
-            if (trackingAsset != null && !string.IsNullOrEmpty(_adjustToken)) {
-                var field = trackingAsset.GetType().GetField("AdjustAppToken");
-                if (field != null) { field.SetValue(trackingAsset, _adjustToken); EditorUtility.SetDirty(trackingAsset); }
-            }
+        private void UpdateModuleField(string configName, string fieldName, string value) {
+            if (string.IsNullOrEmpty(value)) return;
+            var asset = AssetDatabase.LoadAssetAtPath<ScriptableObject>($"{ResourcesPath}/{configName}.asset");
+            if (asset == null) return;
+            var field = asset.GetType().GetField(fieldName);
+            if (field != null) { field.SetValue(asset, value); EditorUtility.SetDirty(asset); }
+        }
 
-            var adAsset = AssetDatabase.LoadAssetAtPath<ScriptableObject>($"{ResourcesPath}/AdConfig.asset");
-            if (adAsset != null && !string.IsNullOrEmpty(_adSdkKey)) {
-                var field = adAsset.GetType().GetField("SdkKey");
-                if (field != null) { field.SetValue(adAsset, _adSdkKey); EditorUtility.SetDirty(adAsset); }
+        // ═══════════════════════════════════════════════════════
+        //  LOGIC: Symbols
+        // ═══════════════════════════════════════════════════════
+
+        private void RefreshSymbolRows() {
+            _symbolRows = new List<SymbolRow>();
+            foreach (var entry in SDKSymbolDetector.Entries) {
+                _symbolRows.Add(new SymbolRow {
+                    Symbol = entry.Symbol, DisplayName = entry.DisplayName, DetectionType = entry.DetectionType,
+                    IsDetected = SDKSymbolDetector.IsSDKDetected(entry.Symbol),
+                    IsDefined = SDKSymbolDetector.IsSymbolDefined(entry.Symbol, _symbolScope),
+                });
             }
         }
 
-        private static List<string> ValidateSetup() {
-            var issues = new List<string>();
-            if (Resources.Load<SDKCoreConfig>("SDKCoreConfig") == null) issues.Add("SDKCoreConfig missing");
-            if (Resources.Load<SDKBootstrapConfig>("SDKBootstrapConfig") == null) issues.Add("SDKBootstrapConfig missing");
-            return issues;
+        private void DrawSymbolRow(SymbolRow row) {
+            Color statusColor = (row.IsDetected && row.IsDefined) ? Color.green : (row.IsDetected ? Color.red : (row.IsDefined ? Color.yellow : Color.gray));
+            EditorGUILayout.BeginHorizontal(EditorStyles.helpBox);
+            GUI.contentColor = statusColor; GUILayout.Label("\u2022", GUILayout.Width(15)); GUI.contentColor = Color.white;
+            EditorGUILayout.LabelField(row.Symbol, GUILayout.Width(180));
+            GUILayout.Label(row.DisplayName, GUILayout.Width(140));
+            GUILayout.FlexibleSpace();
+            if (row.IsDefined) { if (GUILayout.Button("Remove", GUILayout.Width(80))) SDKSymbolDetector.RemoveSymbol(row.Symbol, _symbolScope); }
+            else { if (GUILayout.Button("Add", GUILayout.Width(80))) SDKSymbolDetector.AddSymbol(row.Symbol, _symbolScope); }
+            EditorGUILayout.EndHorizontal();
+        }
+
+        private void DrawBulkSymbolsToolbar() {
+            EditorGUILayout.BeginHorizontal();
+            if (GUILayout.Button("Add All Missing")) SDKSymbolDetector.RunDetection(_symbolScope);
+            EditorGUILayout.EndHorizontal();
+        }
+
+        private static void DrawSymbolTableHeader() {
+            EditorGUILayout.BeginHorizontal(EditorStyles.toolbar);
+            GUILayout.Label("", GUILayout.Width(16));
+            GUILayout.Label("Symbol", EditorStyles.miniLabel, GUILayout.Width(180));
+            GUILayout.Label("SDK", EditorStyles.miniLabel, GUILayout.Width(140));
+            GUILayout.FlexibleSpace();
+            GUILayout.Label("Action", EditorStyles.miniLabel, GUILayout.Width(80));
+            EditorGUILayout.EndHorizontal();
+        }
+
+        // ═══════════════════════════════════════════════════════
+        //  LOGIC: Sources
+        // ═══════════════════════════════════════════════════════
+
+        private void InitializeSourceSwitcher() {
+            _gitRepoUrl = EditorPrefs.GetString("ArcherSDK_GitRepoUrl", "https://github.com/Archer-Studio-Team-1/archer-core-sdk-unity.git");
+            _gitRef = EditorPrefs.GetString("ArcherSDK_GitRef", "main");
+            _localRelativePath = EditorPrefs.GetString("ArcherSDK_LocalPath", "../../archer-core-sdk-unity");
+            _manifestPath = Path.GetFullPath("Packages/manifest.json");
+            RefreshPackageSources();
+        }
+
+        private void RefreshPackageSources() {
+            _packages.Clear(); if (!File.Exists(_manifestPath)) return;
+            var content = File.ReadAllText(_manifestPath);
+            var regex = new Regex($@"""({Regex.Escape(PackagePrefix)}[^""]+)""\s*:\s*""([^""]+)""");
+            foreach (Match match in regex.Matches(content)) {
+                var entry = new PackageEntry { Name = match.Groups[1].Value, CurrentSource = match.Groups[2].Value };
+                entry.IsLocal = entry.CurrentSource.StartsWith("file:");
+                entry.IsGit = entry.CurrentSource.Contains(".git");
+                entry.GitRef = entry.IsGit ? (entry.CurrentSource.Contains("#") ? entry.CurrentSource.Split('#').Last() : _gitRef) : _gitRef;
+                entry.InstalledVersion = ReadPackageVersion(entry.Name);
+                _packages.Add(entry);
+            }
+            if (_packages.Count == 0) _currentSourceMode = SourceMode.Unknown;
+            else if (_packages.All(p => p.IsLocal)) _currentSourceMode = SourceMode.Local;
+            else if (_packages.All(p => p.IsGit)) _currentSourceMode = SourceMode.Git;
+            else _currentSourceMode = SourceMode.Mixed;
+        }
+
+        private void SwitchAllSources(bool toLocal) {
+            var content = File.ReadAllText(_manifestPath);
+            foreach (var pkg in _packages) {
+                string ns = toLocal ? $"file:{_localRelativePath}/{pkg.Name}" : $"{_gitRepoUrl}?path={pkg.Name}#{pkg.GitRef}";
+                content = content.Replace($"\"{pkg.Name}\": \"{pkg.CurrentSource}\"", $"\"{pkg.Name}\": \"{ns}\"");
+            }
+            File.WriteAllText(_manifestPath, content); RefreshPackageSources(); UnityEditor.PackageManager.Client.Resolve();
+        }
+
+        private void SwitchSingleSource(PackageEntry pkg, bool toLocal) {
+            var content = File.ReadAllText(_manifestPath);
+            string ns = toLocal ? $"file:{_localRelativePath}/{pkg.Name}" : $"{_gitRepoUrl}?path={pkg.Name}#{pkg.GitRef}";
+            content = content.Replace($"\"{pkg.Name}\": \"{pkg.CurrentSource}\"", $"\"{pkg.Name}\": \"{ns}\"");
+            File.WriteAllText(_manifestPath, content); RefreshPackageSources(); UnityEditor.PackageManager.Client.Resolve();
+        }
+
+        // ═══════════════════════════════════════════════════════
+        //  HELPERS
+        // ═══════════════════════════════════════════════════════
+
+        private static string ReadPackageVersion(string pkgName) {
+            string p = Path.GetFullPath($"Packages/{pkgName}/package.json");
+            if (!File.Exists(p)) p = Path.GetFullPath($"Library/PackageCache/{pkgName}/package.json");
+            if (!File.Exists(p)) return "?";
+            var m = Regex.Match(File.ReadAllText(p), @"""version""\s*:\s*""([^""]+)""");
+            return m.Success ? m.Groups[1].Value : "?";
+        }
+
+        private static string GetRelativePath(string from, string to) {
+            var f = new Uri(from.TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar);
+            var t = new Uri(to.TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar);
+            return Uri.UnescapeDataString(f.MakeRelativeUri(t).ToString()).TrimEnd('/');
+        }
+
+        private static bool CreateConfigIfMissing<T>(string name) where T : ScriptableObject {
+            string path = $"{ResourcesPath}/{name}.asset";
+            if (AssetDatabase.LoadAssetAtPath<T>(path) != null) return false;
+            AssetDatabase.CreateAsset(ScriptableObject.CreateInstance<T>(), path); return true;
+        }
+
+        private static bool CreateModuleConfig(string name) {
+            string path = $"{ResourcesPath}/{name}.asset"; if (File.Exists(Path.GetFullPath(path))) return false;
+            System.Type t = null;
+            foreach (var a in AppDomain.CurrentDomain.GetAssemblies()) {
+                t = a.GetType($"ArcherStudio.SDK.Consent.{name}") ?? a.GetType($"ArcherStudio.SDK.Login.{name}") ?? a.GetType($"ArcherStudio.SDK.Tracking.{name}") ?? a.GetType($"ArcherStudio.SDK.Ads.{name}") ?? a.GetType($"ArcherStudio.SDK.IAP.{name}") ?? a.GetType($"ArcherStudio.SDK.RemoteConfig.{name}") ?? a.GetType($"ArcherStudio.SDK.Push.{name}") ?? a.GetType($"ArcherStudio.SDK.DeepLink.{name}") ?? a.GetType($"ArcherStudio.SDK.TestLab.{name}") ?? a.GetType($"ArcherStudio.SDK.CloudSave.{name}");
+                if (t != null) break;
+            }
+            if (t == null) return false;
+            AssetDatabase.CreateAsset(ScriptableObject.CreateInstance(t), path); return true;
         }
 
         private static void EnsureDirectoryExists(string path) {
-            if (!AssetDatabase.IsValidFolder(path)) {
-                string parent = Path.GetDirectoryName(path)?.Replace('\\', '/');
-                string folder = Path.GetFileName(path);
-                if (!string.IsNullOrEmpty(parent) && !string.IsNullOrEmpty(folder)) {
-                    if (!AssetDatabase.IsValidFolder(parent)) EnsureDirectoryExists(parent);
-                    AssetDatabase.CreateFolder(parent, folder);
-                }
+            if (AssetDatabase.IsValidFolder(path)) return;
+            string parent = Path.GetDirectoryName(path)?.Replace('\\', '/');
+            string folder = Path.GetFileName(path);
+            if (!string.IsNullOrEmpty(parent) && !string.IsNullOrEmpty(folder)) {
+                if (!AssetDatabase.IsValidFolder(parent)) EnsureDirectoryExists(parent);
+                AssetDatabase.CreateFolder(parent, folder);
             }
         }
 
-        private void DrawConfigButton<T>(string name, string label) where T : ScriptableObject {
-            EditorGUILayout.BeginHorizontal();
-            string path = $"{ResourcesPath}/{name}.asset";
-            bool exists = AssetDatabase.LoadAssetAtPath<T>(path) != null;
-            EditorGUILayout.LabelField($"  {label}{(exists ? "" : " (missing)")}", exists ? EditorStyles.label : EditorStyles.boldLabel);
-            if (exists) { if (GUILayout.Button("Select", GUILayout.Width(60))) Selection.activeObject = AssetDatabase.LoadAssetAtPath<T>(path); }
-            else { if (GUILayout.Button("Create", GUILayout.Width(60))) { EnsureDirectoryExists(ResourcesPath); CreateConfigIfMissing<T>(name); AssetDatabase.SaveAssets(); } }
+        private void DrawConfigButton<T>(string n, string l) where T : ScriptableObject {
+            EditorGUILayout.BeginHorizontal(); string p = $"{ResourcesPath}/{n}.asset"; bool ex = AssetDatabase.LoadAssetAtPath<T>(p) != null;
+            EditorGUILayout.LabelField($"  {l}{(ex ? "" : " (missing)")}", ex ? EditorStyles.label : EditorStyles.boldLabel);
+            if (ex) { if (GUILayout.Button("Select", GUILayout.Width(60))) Selection.activeObject = AssetDatabase.LoadAssetAtPath<T>(p); }
+            else { if (GUILayout.Button("Create", GUILayout.Width(60))) { EnsureDirectoryExists(ResourcesPath); CreateConfigIfMissing<T>(n); AssetDatabase.SaveAssets(); } }
             EditorGUILayout.EndHorizontal();
         }
 
-        private void DrawModuleConfigButton(string name, string label, string packageName) {
-            EditorGUILayout.BeginHorizontal();
-            string path = $"{ResourcesPath}/{name}.asset";
-            bool exists = File.Exists(Path.GetFullPath(path));
-            bool packageInstalled = File.Exists(Path.GetFullPath($"Packages/{packageName}/package.json"));
-
-            bool hasLibInfo = SDKLibraryImporter.HasInfo(name);
-            bool libInstalled = hasLibInfo && SDKLibraryImporter.IsInstalled(name);
-
-            string suffix = !packageInstalled
-                ? " (package not installed)"
-                : (exists ? "" : " (missing)");
-            EditorGUILayout.LabelField($"  {label}{suffix}",
-                exists && packageInstalled ? EditorStyles.label : EditorStyles.boldLabel);
-
-            EditorGUI.BeginDisabledGroup(!packageInstalled);
-            if (exists) {
-                if (GUILayout.Button("Select", GUILayout.Width(60)))
-                    Selection.activeObject = AssetDatabase.LoadAssetAtPath<Object>(path);
-            } else {
-                if (GUILayout.Button("Create", GUILayout.Width(60))) {
-                    EnsureDirectoryExists(ResourcesPath);
-                    CreateModuleConfig(name);
-                    AssetDatabase.SaveAssets();
-                }
-            }
+        private void DrawModuleConfigButton(string n, string l, string pn) {
+            EditorGUILayout.BeginHorizontal(); string p = $"{ResourcesPath}/{n}.asset"; bool ex = File.Exists(Path.GetFullPath(p)); bool pi = File.Exists(Path.GetFullPath($"Packages/{pn}/package.json"));
+            EditorGUILayout.LabelField($"  {l}{(!pi ? " (pkg not installed)" : (ex ? "" : " (missing)"))}", ex && pi ? EditorStyles.label : EditorStyles.boldLabel);
+            EditorGUI.BeginDisabledGroup(!pi);
+            if (ex) { if (GUILayout.Button("Select", GUILayout.Width(60))) Selection.activeObject = AssetDatabase.LoadAssetAtPath<Object>(p); }
+            else { if (GUILayout.Button("Create", GUILayout.Width(60))) { EnsureDirectoryExists(ResourcesPath); CreateModuleConfig(n); AssetDatabase.SaveAssets(); } }
             EditorGUI.EndDisabledGroup();
-
-            if (hasLibInfo) {
-                var prev = GUI.backgroundColor;
-                if (libInstalled) {
-                    GUI.backgroundColor = new Color(0.6f, 0.9f, 0.6f);
-                    GUI.enabled = false;
-                    GUILayout.Button("Lib Installed", GUILayout.Width(110));
-                    GUI.enabled = true;
-                } else {
-                    GUI.backgroundColor = new Color(0.3f, 0.7f, 1f);
-                    if (GUILayout.Button("Import Lib", GUILayout.Width(110))) {
-                        SDKLibraryImporter.ImportLibrary(name);
-                    }
-                }
-                GUI.backgroundColor = prev;
-            } else {
-                GUILayout.Space(114);
-            }
-
+            if (SDKLibraryImporter.HasInfo(n)) { if (GUILayout.Button(SDKLibraryImporter.IsInstalled(n) ? "Installed" : "Import Lib", GUILayout.Width(100))) SDKLibraryImporter.ImportLibrary(n); } else GUILayout.Space(104);
             EditorGUILayout.EndHorizontal();
         }
 
-        private enum PendingAction { None, Add, Remove }
-        private class SymbolRow { public string Symbol, DisplayName, DetectionType; public bool IsDetected, IsDefined; public PendingAction Pending; }
+        private static List<string> ValidateSetup() {
+            var res = new List<string>(); if (Resources.Load<SDKCoreConfig>("SDKCoreConfig") == null) res.Add("SDKCoreConfig missing");
+            if (Resources.Load<SDKBootstrapConfig>("SDKBootstrapConfig") == null) res.Add("SDKBootstrapConfig missing"); return res;
+        }
+
+        private List<string> _validationResults;
+
+        private struct ModuleToggles {
+            public bool Consent, Login, Tracking, Analytics, Ads, IAP, RemoteConfig, Push, DeepLink, TestLab, CloudSave;
+        }
+
+        private ModuleToggles GetModuleToggles() => new ModuleToggles {
+            Consent = _enableConsent, Login = _enableLogin, Tracking = _enableTracking, Analytics = _enableAnalytics,
+            Ads = _enableAds, IAP = _enableIAP, RemoteConfig = _enableRemoteConfig, Push = _enablePush,
+            DeepLink = _enableDeepLink, TestLab = _enableTestLab, CloudSave = _enableCloudSave
+        };
+
+        private class PackageEntry { public string Name, CurrentSource, GitRef, InstalledVersion; public bool IsLocal, IsGit; }
+        private class SymbolRow { public string Symbol, DisplayName, DetectionType; public bool IsDetected, IsDefined; }
     }
 }

@@ -80,6 +80,8 @@ namespace ArcherStudio.SDK.Core.Editor {
             new SDKSymbolEntry("HAS_FIREBASE_MESSAGING",     "Firebase.Messaging.FirebaseMessaging",       "Firebase Cloud Messaging"),
             new SDKSymbolEntry("HAS_FIREBASE_DYNAMIC_LINKS", "Firebase.DynamicLinks.DynamicLinks",         "Firebase Dynamic Links"),
             new SDKSymbolEntry("HAS_FIREBASE_FIRESTORE",     "Firebase.Firestore.FirebaseFirestore",        "Firebase Firestore"),
+            new SDKSymbolEntry("DEV",                         null,                                         "Env: Development"),
+            new SDKSymbolEntry("PRODUCTION",                  null,                                         "Env: Production"),
 
             // Attribution & Mediation
             new SDKSymbolEntry("HAS_ADJUST_SDK",             "AdjustSdk.Adjust",                           "Adjust SDK v5"),
@@ -269,9 +271,9 @@ namespace ArcherStudio.SDK.Core.Editor {
             return changes;
         }
 
-        private static bool IsTypeAvailable(string fullyQualifiedTypeName) {
+        private static bool IsTypeAvailable(string fullyQualifiedTypeName) { if (string.IsNullOrEmpty(fullyQualifiedTypeName)) return false;
             foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies()) {
-                if (assembly.GetType(fullyQualifiedTypeName, false) != null) {
+                if (!string.IsNullOrEmpty(fullyQualifiedTypeName) && assembly.GetType(fullyQualifiedTypeName, false) != null) {
                     return true;
                 }
             }
