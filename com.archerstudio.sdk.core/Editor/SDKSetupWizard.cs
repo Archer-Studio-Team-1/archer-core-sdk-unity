@@ -38,6 +38,7 @@ namespace ArcherStudio.SDK.Core.Editor {
 
         // ─── Module toggles ───
         private bool _enableConsent = true;
+        private bool _enableLogin;
         private bool _enableTracking = true;
         private bool _enableAnalytics = true;
         private bool _enableAds = true;
@@ -62,9 +63,53 @@ namespace ArcherStudio.SDK.Core.Editor {
             window.Repaint();
         }
 
+        private void OnEnable() {
+            LoadFromExistingConfigs();
+        }
+
         private void OnFocus() {
             if (_currentTab == 2) {
                 RefreshSymbolRows();
+            }
+        }
+
+        /// <summary>
+        /// Đọc giá trị từ các config asset hiện có trong Assets/Resources/ vào
+        /// UI state để Quick Setup phản ánh đúng trạng thái project (tạo mới nếu
+        /// thiếu, chỉnh sửa nếu đã có).
+        /// </summary>
+        private void LoadFromExistingConfigs() {
+            var coreConfig = AssetDatabase.LoadAssetAtPath<SDKCoreConfig>($"{ResourcesPath}/SDKCoreConfig.asset");
+            if (coreConfig != null) {
+                _appId = coreConfig.AppId ?? "";
+                _enableConsent = coreConfig.EnableConsent;
+                _enableLogin = coreConfig.EnableLogin;
+                _enableTracking = coreConfig.EnableTracking;
+                _enableAnalytics = coreConfig.EnableAnalytics;
+                _enableAds = coreConfig.EnableAds;
+                _enableIAP = coreConfig.EnableIAP;
+                _enableRemoteConfig = coreConfig.EnableRemoteConfig;
+                _enablePush = coreConfig.EnablePush;
+                _enableDeepLink = coreConfig.EnableDeepLink;
+                _enableTestLab = coreConfig.EnableTestLab;
+            }
+
+            var trackingAsset = AssetDatabase.LoadAssetAtPath<ScriptableObject>($"{ResourcesPath}/TrackingConfig.asset");
+            if (trackingAsset != null) {
+                var field = trackingAsset.GetType().GetField("AdjustAppToken");
+                if (field != null) {
+                    var value = field.GetValue(trackingAsset) as string;
+                    if (!string.IsNullOrEmpty(value)) _adjustToken = value;
+                }
+            }
+
+            var adAsset = AssetDatabase.LoadAssetAtPath<ScriptableObject>($"{ResourcesPath}/AdConfig.asset");
+            if (adAsset != null) {
+                var field = adAsset.GetType().GetField("SdkKey");
+                if (field != null) {
+                    var value = field.GetValue(adAsset) as string;
+                    if (!string.IsNullOrEmpty(value)) _adSdkKey = value;
+                }
             }
         }
 
@@ -115,9 +160,23 @@ namespace ArcherStudio.SDK.Core.Editor {
 
         private void DrawQuickSetup() {
             EditorGUILayout.LabelField("Quick Setup", EditorStyles.boldLabel);
+
+            bool coreExists = AssetDatabase.LoadAssetAtPath<SDKCoreConfig>($"{ResourcesPath}/SDKCoreConfig.asset") != null;
             EditorGUILayout.HelpBox(
-                "Creates all required config assets in Assets/Resources/.",
-                MessageType.Info);
+                coreExists
+                    ? "SDKCoreConfig đã tồn tại — giá trị đang được load từ disk. Thay đổi trên wizard và nhấn 'Run Setup' để cập nhật."
+                    : "SDKCoreConfig chưa tồn tại — nhấn 'Run Setup' để tạo mới các config trong Assets/Resources/.",
+                coreExists ? MessageType.Info : MessageType.Warning);
+
+            EditorGUILayout.Space(4);
+            EditorGUILayout.BeginHorizontal();
+            EditorGUILayout.LabelField(coreExists ? "Status: existing configs loaded" : "Status: no configs detected",
+                EditorStyles.miniLabel);
+            GUILayout.FlexibleSpace();
+            if (GUILayout.Button("Reload from Existing", GUILayout.Width(160), GUILayout.Height(20))) {
+                LoadFromExistingConfigs();
+            }
+            EditorGUILayout.EndHorizontal();
 
             EditorGUILayout.Space(8);
             EditorGUILayout.LabelField("App Settings", EditorStyles.boldLabel);
@@ -128,6 +187,7 @@ namespace ArcherStudio.SDK.Core.Editor {
             EditorGUILayout.Space(8);
             EditorGUILayout.LabelField("Modules", EditorStyles.boldLabel);
             _enableConsent = EditorGUILayout.Toggle("Consent (GDPR/ATT)", _enableConsent);
+            _enableLogin = EditorGUILayout.Toggle("Login (Google Play Games)", _enableLogin);
             _enableTracking = EditorGUILayout.Toggle("Tracking (Firebase + Adjust)", _enableTracking);
             _enableAnalytics = EditorGUILayout.Toggle("Analytics", _enableAnalytics);
             _enableAds = EditorGUILayout.Toggle("Ads (Mediation)", _enableAds);
@@ -154,7 +214,8 @@ namespace ArcherStudio.SDK.Core.Editor {
             EditorGUILayout.LabelField("Config Assets", EditorStyles.boldLabel);
             EditorGUILayout.HelpBox(
                 "Create individual config assets in Assets/Resources/. " +
-                "Existing configs will NOT be overwritten.",
+                "Existing configs will NOT be overwritten.\n" +
+                "Nhấn 'Import Lib' để cài thư viện bên thứ ba (UPM hoặc mở trang tải .unitypackage).",
                 MessageType.Info);
 
             EditorGUILayout.Space(8);
@@ -166,6 +227,7 @@ namespace ArcherStudio.SDK.Core.Editor {
             EditorGUILayout.LabelField("Module Configs", EditorStyles.boldLabel);
 
             DrawModuleConfigButton("ConsentConfig", "Consent Config", "com.archerstudio.sdk.consent");
+            DrawModuleConfigButton("LoginConfig", "Login Config", "com.archerstudio.sdk.login");
             DrawModuleConfigButton("TrackingConfig", "Tracking Config", "com.archerstudio.sdk.tracking");
             DrawModuleConfigButton("AdConfig", "Ad Config", "com.archerstudio.sdk.ads");
             DrawModuleConfigButton("IAPConfig", "IAP Config", "com.archerstudio.sdk.iap");
@@ -379,6 +441,8 @@ namespace ArcherStudio.SDK.Core.Editor {
         private List<string> _validationResults;
 
         private void RunQuickSetup() {
+            bool coreExisted = AssetDatabase.LoadAssetAtPath<SDKCoreConfig>($"{ResourcesPath}/SDKCoreConfig.asset") != null;
+
             if (_createConfigs) {
                 var toggles = GetModuleToggles();
                 CreateAllConfigs(toggles);
@@ -386,18 +450,25 @@ namespace ArcherStudio.SDK.Core.Editor {
             }
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
-            EditorUtility.DisplayDialog("SDK Setup Complete", "Config assets created/verified!", "OK");
+
+            EditorUtility.DisplayDialog(
+                "SDK Setup Complete",
+                coreExisted
+                    ? "Config assets updated với giá trị mới (tạo thêm nếu thiếu)."
+                    : "Config assets đã được tạo trong Assets/Resources/.",
+                "OK");
         }
 
         private struct ModuleToggles {
-            public bool Consent, Tracking, Analytics, Ads, IAP, RemoteConfig, Push, DeepLink, TestLab;
-            public ModuleToggles(bool allOn = true) { Consent = Tracking = Analytics = Ads = IAP = RemoteConfig = allOn; Push = DeepLink = TestLab = false; }
+            public bool Consent, Login, Tracking, Analytics, Ads, IAP, RemoteConfig, Push, DeepLink, TestLab;
+            public ModuleToggles(bool allOn = true) { Consent = Tracking = Analytics = Ads = IAP = RemoteConfig = allOn; Login = Push = DeepLink = TestLab = false; }
         }
 
         private ModuleToggles GetModuleToggles() {
             return new ModuleToggles {
-                Consent = _enableConsent, Tracking = _enableTracking, Analytics = _enableAnalytics, Ads = _enableAds, IAP = _enableIAP,
-                RemoteConfig = _enableRemoteConfig, Push = _enablePush, DeepLink = _enableDeepLink, TestLab = _enableTestLab
+                Consent = _enableConsent, Login = _enableLogin, Tracking = _enableTracking, Analytics = _enableAnalytics,
+                Ads = _enableAds, IAP = _enableIAP, RemoteConfig = _enableRemoteConfig,
+                Push = _enablePush, DeepLink = _enableDeepLink, TestLab = _enableTestLab
             };
         }
 
@@ -407,6 +478,7 @@ namespace ArcherStudio.SDK.Core.Editor {
             count += CreateConfigIfMissing<SDKCoreConfig>("SDKCoreConfig") ? 1 : 0;
             count += CreateConfigIfMissing<SDKBootstrapConfig>("SDKBootstrapConfig") ? 1 : 0;
             if (toggles.Consent) count += CreateModuleConfig("ConsentConfig") ? 1 : 0;
+            if (toggles.Login) count += CreateModuleConfig("LoginConfig") ? 1 : 0;
             if (toggles.Tracking) count += CreateModuleConfig("TrackingConfig") ? 1 : 0;
             if (toggles.Ads) count += CreateModuleConfig("AdConfig") ? 1 : 0;
             if (toggles.IAP) count += CreateModuleConfig("IAPConfig") ? 1 : 0;
@@ -431,6 +503,7 @@ namespace ArcherStudio.SDK.Core.Editor {
             System.Type configType = null;
             foreach (var assembly in System.AppDomain.CurrentDomain.GetAssemblies()) {
                 configType = assembly.GetType($"ArcherStudio.SDK.Consent.{configName}")
+                          ?? assembly.GetType($"ArcherStudio.SDK.Login.{configName}")
                           ?? assembly.GetType($"ArcherStudio.SDK.Tracking.{configName}")
                           ?? assembly.GetType($"ArcherStudio.SDK.Ads.{configName}")
                           ?? assembly.GetType($"ArcherStudio.SDK.IAP.{configName}")
@@ -448,7 +521,7 @@ namespace ArcherStudio.SDK.Core.Editor {
         private void ApplyConfigValues(ModuleToggles toggles) {
             var coreConfig = AssetDatabase.LoadAssetAtPath<SDKCoreConfig>($"{ResourcesPath}/SDKCoreConfig.asset");
             if (coreConfig != null) {
-                coreConfig.AppId = _appId; coreConfig.EnableConsent = toggles.Consent; coreConfig.EnableTracking = toggles.Tracking;
+                coreConfig.AppId = _appId; coreConfig.EnableConsent = toggles.Consent; coreConfig.EnableLogin = toggles.Login; coreConfig.EnableTracking = toggles.Tracking;
                 coreConfig.EnableAnalytics = toggles.Analytics; coreConfig.EnableAds = toggles.Ads; coreConfig.EnableIAP = toggles.IAP;
                 coreConfig.EnableRemoteConfig = toggles.RemoteConfig;
                 coreConfig.EnablePush = toggles.Push; coreConfig.EnableDeepLink = toggles.DeepLink; coreConfig.EnableTestLab = toggles.TestLab;
@@ -501,11 +574,47 @@ namespace ArcherStudio.SDK.Core.Editor {
             string path = $"{ResourcesPath}/{name}.asset";
             bool exists = File.Exists(Path.GetFullPath(path));
             bool packageInstalled = File.Exists(Path.GetFullPath($"Packages/{packageName}/package.json"));
+
+            bool hasLibInfo = SDKLibraryImporter.HasInfo(name);
+            bool libInstalled = hasLibInfo && SDKLibraryImporter.IsInstalled(name);
+
+            string suffix = !packageInstalled
+                ? " (package not installed)"
+                : (exists ? "" : " (missing)");
+            EditorGUILayout.LabelField($"  {label}{suffix}",
+                exists && packageInstalled ? EditorStyles.label : EditorStyles.boldLabel);
+
             EditorGUI.BeginDisabledGroup(!packageInstalled);
-            EditorGUILayout.LabelField($"  {label}{(!packageInstalled ? " (package not installed)" : (exists ? "" : " (missing)"))}", exists && packageInstalled ? EditorStyles.label : EditorStyles.boldLabel);
-            if (exists) { if (GUILayout.Button("Select", GUILayout.Width(60))) Selection.activeObject = AssetDatabase.LoadAssetAtPath<Object>(path); }
-            else { if (GUILayout.Button("Create", GUILayout.Width(60))) { EnsureDirectoryExists(ResourcesPath); CreateModuleConfig(name); AssetDatabase.SaveAssets(); } }
+            if (exists) {
+                if (GUILayout.Button("Select", GUILayout.Width(60)))
+                    Selection.activeObject = AssetDatabase.LoadAssetAtPath<Object>(path);
+            } else {
+                if (GUILayout.Button("Create", GUILayout.Width(60))) {
+                    EnsureDirectoryExists(ResourcesPath);
+                    CreateModuleConfig(name);
+                    AssetDatabase.SaveAssets();
+                }
+            }
             EditorGUI.EndDisabledGroup();
+
+            if (hasLibInfo) {
+                var prev = GUI.backgroundColor;
+                if (libInstalled) {
+                    GUI.backgroundColor = new Color(0.6f, 0.9f, 0.6f);
+                    GUI.enabled = false;
+                    GUILayout.Button("Lib Installed", GUILayout.Width(110));
+                    GUI.enabled = true;
+                } else {
+                    GUI.backgroundColor = new Color(0.3f, 0.7f, 1f);
+                    if (GUILayout.Button("Import Lib", GUILayout.Width(110))) {
+                        SDKLibraryImporter.ImportLibrary(name);
+                    }
+                }
+                GUI.backgroundColor = prev;
+            } else {
+                GUILayout.Space(114);
+            }
+
             EditorGUILayout.EndHorizontal();
         }
 

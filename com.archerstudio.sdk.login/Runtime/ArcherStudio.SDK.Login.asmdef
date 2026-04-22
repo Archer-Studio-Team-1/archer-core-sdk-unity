@@ -3,7 +3,8 @@
   "rootNamespace": "ArcherStudio.SDK.Login",
   "references": [
     "ArcherStudio.SDK.Core",
-    "ArcherStudio.SDK.Consent"
+    "ArcherStudio.SDK.Consent",
+    "Google.Play.Games"
   ],
   "includePlatforms": [],
   "excludePlatforms": [],

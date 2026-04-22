@@ -29,7 +29,7 @@ namespace ArcherStudio.SDK.Login {
                 return;
             }
 
-#if HAS_GPGS
+#if HAS_GPGS && (UNITY_ANDROID || UNITY_EDITOR)
             _provider = new GPGSLoginProvider();
 #else
             _provider = new StubLoginProvider();
@@ -96,6 +96,46 @@ namespace ArcherStudio.SDK.Login {
                 onComplete?.Invoke(LoginResult.Failed(LoginErrorCode.NotInitialized));
             }
         }
+
+        /// <summary>
+        /// Trigger manual sign-in flow với UI prompt (ví dụ khi user click nút
+        /// đăng nhập). Khác với ReAuthenticate ở chỗ: ReAuthenticate silent,
+        /// ManualAuthenticate có thể show UI dialog của Google Play Games.
+        /// </summary>
+        public void ManualAuthenticate(Action<LoginResult> onComplete = null) {
+            if (State == ModuleState.Initializing) {
+                SDKLogger.Warning(Tag, "ManualAuthenticate called while initializing.");
+                onComplete?.Invoke(LoginResult.Failed(LoginErrorCode.NotInitialized));
+                return;
+            }
+            if (State != ModuleState.Ready) {
+                onComplete?.Invoke(LoginResult.Failed(LoginErrorCode.NotInitialized));
+                return;
+            }
+            try {
+                _provider.ManuallyAuthenticate(result => {
+                    try {
+                        if (result.Success)
+                            SDKEventBus.Publish(new LoginSucceededEvent(result.PlayerId, result.DisplayName));
+                        else
+                            SDKEventBus.Publish(new LoginFailedEvent(result.ErrorCode));
+                    } catch (Exception cbEx) {
+                        SDKLogger.Error(Tag, $"ManualAuth callback error: {cbEx.Message}");
+                    }
+                    onComplete?.Invoke(result);
+                });
+            } catch (Exception e) {
+                SDKLogger.Error(Tag, $"ManualAuth exception: {e.Message}");
+                onComplete?.Invoke(LoginResult.Failed(LoginErrorCode.NotInitialized));
+            }
+        }
+
+        /// <summary>
+        /// Alias cho SignOut — xóa state local, publish LoggedOutEvent.
+        /// GPGS v2+ không có native logout; user sign-out thật qua cài đặt
+        /// Google Play Games trên thiết bị.
+        /// </summary>
+        public void LogOut() => SignOut();
 
         public void OnConsentChanged(ConsentStatus consent) { }
 

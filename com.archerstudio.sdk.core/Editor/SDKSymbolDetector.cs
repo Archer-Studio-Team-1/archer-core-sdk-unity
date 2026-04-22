@@ -33,6 +33,7 @@ namespace ArcherStudio.SDK.Core.Editor {
     ///   HAS_UNITY_IAP              -> UnityEngine.Purchasing.UnityPurchasing
     ///   HAS_IRONSOURCE_SDK         -> IronSource
     ///   HAS_FACEBOOK_SDK           -> Facebook.Unity.FB
+    ///   HAS_GPGS                   -> GooglePlayGames.PlayGamesPlatform
     /// </summary>
     [InitializeOnLoad]
     public static class SDKSymbolDetector {
@@ -89,6 +90,9 @@ namespace ArcherStudio.SDK.Core.Editor {
 
             // Social
             new SDKSymbolEntry("HAS_FACEBOOK_SDK",           "Facebook.Unity.FB",                          "Facebook / Meta SDK"),
+
+            // Login
+            new SDKSymbolEntry("HAS_GPGS",                   "GooglePlayGames.PlayGamesPlatform",          "Google Play Games Services"),
 
             // Testing
             new SDKSymbolEntry("HAS_TESTLAB",                "ArcherStudio.SDK.TestLab.GameLoopHandler",   "Firebase Test Lab"),

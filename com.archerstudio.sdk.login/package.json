@@ -1,14 +1,14 @@
 {
   "name": "com.archerstudio.sdk.login",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "displayName": "Archer Studio SDK - Login",
-  "description": "Authentication module. GPGS silent sign-in on Android with guest mode fallback. Exposes PlayerId for cloud save.",
+  "description": "Authentication module. GPGS v2+ silent sign-in on Android with guest mode fallback. Supports manual UI sign-in and logout. Exposes PlayerId for cloud save.",
   "unity": "6000.0",
   "author": {
     "name": "QuanNV - Team 1"
   },
   "dependencies": {
-    "com.archerstudio.sdk.core": "1.0.0",
+    "com.archerstudio.sdk.core": "1.1.0",
     "com.archerstudio.sdk.consent": "1.0.0"
   }
 }
