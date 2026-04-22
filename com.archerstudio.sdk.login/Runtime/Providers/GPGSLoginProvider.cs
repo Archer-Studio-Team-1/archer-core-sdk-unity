@@ -120,8 +120,7 @@ namespace ArcherStudio.SDK.Login {
             }
             try {
                 PlayGamesPlatform.Instance.RequestServerSideAccess(
-                    requestOfflineAccess: false,
-                    callback: code => {
+                    code => {
                         if (string.IsNullOrEmpty(code)) {
                             SDKLogger.Warning(Tag, "RequestServerSideAccess returned empty code.");
                         } else {
