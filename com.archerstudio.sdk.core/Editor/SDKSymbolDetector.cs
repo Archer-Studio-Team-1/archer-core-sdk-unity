@@ -1,8 +1,10 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using UnityEditor;
 using UnityEditor.Build;
+using UnityEditor.Compilation;
 using UnityEngine;
 
 namespace ArcherStudio.SDK.Core.Editor {
@@ -349,7 +351,7 @@ namespace ArcherStudio.SDK.Core.Editor {
             if (profileType == null) return false;
 
             var getActiveMethod = profileType.GetMethod("GetActiveBuildProfile",
-                System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static);
+                BindingFlags.Public | BindingFlags.Static);
             if (getActiveMethod == null) return false;
 
             var activeProfile = getActiveMethod.Invoke(null, null);
@@ -365,15 +367,18 @@ namespace ArcherStudio.SDK.Core.Editor {
                 if (list.Contains(symbol)) return true;
                 list.Add(symbol);
             } else {
-                if (!list.Remove(symbol)) return true;
+                if (!list.Remove(symbol)) {
+                    Debug.Log($"[{Tag}] '{symbol}' not present on Active Build Profile — nothing to remove");
+                    return true;
+                }
             }
+
+            // Profile's scriptingDefines only take effect when this flag is on
+            EnsureProfileOverrideEnabled(profileType, activeProfile);
 
             definesProperty.SetValue(activeProfile, list.ToArray());
 
-            // Mark the ScriptableObject dirty so Unity saves the change
-            var so = activeProfile as ScriptableObject;
-            if (so != null) EditorUtility.SetDirty(so);
-
+            FinalizeProfileWrite(activeProfile as ScriptableObject);
             Debug.Log($"[{Tag}] {(add ? "Added" : "Removed")} '{symbol}' on Active Build Profile");
             return true;
         }
@@ -435,7 +440,7 @@ namespace ArcherStudio.SDK.Core.Editor {
             if (profileType == null) return false;
 
             var getActiveMethod = profileType.GetMethod("GetActiveBuildProfile",
-                System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static);
+                BindingFlags.Public | BindingFlags.Static);
             if (getActiveMethod == null) return false;
 
             var activeProfile = getActiveMethod.Invoke(null, null);
@@ -455,12 +460,55 @@ namespace ArcherStudio.SDK.Core.Editor {
                 Debug.Log($"[{Tag}] Bulk {(change.ShouldAdd ? "add" : "remove")} '{change.Symbol}' on Active Build Profile");
             }
 
+            // Profile's scriptingDefines only take effect when this flag is on
+            EnsureProfileOverrideEnabled(profileType, activeProfile);
+
             definesProperty.SetValue(activeProfile, set.ToArray());
 
-            var so = activeProfile as ScriptableObject;
-            if (so != null) EditorUtility.SetDirty(so);
-
+            FinalizeProfileWrite(activeProfile as ScriptableObject);
             return true;
+        }
+
+        /// <summary>
+        /// Set BuildProfile.overrideGlobalScriptingDefines = true so Unity actually uses
+        /// the profile's scriptingDefines instead of falling back to PlayerSettings globals.
+        /// No-op if the field/property doesn't exist in the current Unity version.
+        /// </summary>
+        private static void EnsureProfileOverrideEnabled(Type profileType, object profile) {
+            if (profileType == null || profile == null) return;
+
+            const string memberName = "overrideGlobalScriptingDefines";
+            var prop = profileType.GetProperty(memberName,
+                BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+            if (prop != null && prop.CanWrite) {
+                var current = prop.GetValue(profile);
+                if (current is bool b && !b) {
+                    prop.SetValue(profile, true);
+                    Debug.Log($"[{Tag}] Enabled {memberName} on Active Build Profile");
+                }
+                return;
+            }
+
+            var field = profileType.GetField(memberName,
+                BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+            if (field != null) {
+                var current = field.GetValue(profile);
+                if (current is bool b && !b) {
+                    field.SetValue(profile, true);
+                    Debug.Log($"[{Tag}] Enabled {memberName} on Active Build Profile");
+                }
+            }
+        }
+
+        /// <summary>
+        /// Persist the changes to disk and trigger a script recompile so #if HAS_* updates.
+        /// Without these, Unity only marks the SO dirty but never re-evaluates scripting defines.
+        /// </summary>
+        private static void FinalizeProfileWrite(ScriptableObject so) {
+            if (so == null) return;
+            EditorUtility.SetDirty(so);
+            AssetDatabase.SaveAssetIfDirty(so);
+            CompilationPipeline.RequestScriptCompilation();
         }
 #endif
 
