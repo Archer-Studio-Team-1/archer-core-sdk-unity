@@ -58,7 +58,7 @@ namespace ArcherStudio.SDK.Login {
                         onComplete?.Invoke(LoginResult.Succeeded(PlayerId, DisplayName));
                     } else {
                         IsSignedIn = false;
-                        SDKLogger.Info(Tag, $"Silent sign-in failed (status={status}) — guest mode.");
+                        SDKLogger.Warning(Tag, $"Silent sign-in failed. Status={status}. WebClientId used={GameInfo.WebClientId}");
                         onComplete?.Invoke(LoginResult.Failed(LoginErrorCode.NotSignedIn));
                     }
                 });
