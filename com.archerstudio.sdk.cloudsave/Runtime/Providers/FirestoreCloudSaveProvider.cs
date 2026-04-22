@@ -1,6 +1,7 @@
 #if HAS_FIREBASE_FIRESTORE
 using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using Firebase.Auth;
 using Firebase.Firestore;
 using ArcherStudio.SDK.Core;
@@ -17,9 +18,9 @@ namespace ArcherStudio.SDK.CloudSave {
     ///   - appVersion: string     — Application.version, for future migration hooks
     ///
     /// Conflict logic (state tracked per-slot in PlayerPrefs):
-    ///   cloud.updatedAt > local.ts &amp;&amp; isDirty  → WithConflict (game must resolve)
-    ///   cloud.updatedAt > local.ts &amp;&amp; !isDirty → Succeeded with cloud data
-    ///   cloud.updatedAt &lt;= local.ts            → LocalOnly with cached local data
+    ///   cloud.updatedAt > local.ts && isDirty  → WithConflict (game must resolve)
+    ///   cloud.updatedAt > local.ts && !isDirty → Succeeded with cloud data
+    ///   cloud.updatedAt <= local.ts            → LocalOnly with cached local data
     /// </summary>
     public class FirestoreCloudSaveProvider : ICloudSaveProvider {
         private const string Tag = "CloudSave-Firestore";
