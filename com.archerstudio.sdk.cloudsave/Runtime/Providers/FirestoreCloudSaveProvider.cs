@@ -47,7 +47,7 @@ namespace ArcherStudio.SDK.CloudSave {
                     onComplete?.Invoke(false);
                     return;
                 }
-                _firebaseUid = task.Result.User.UserId;
+                _firebaseUid = task.Result.UserId;
                 _db = FirebaseFirestore.DefaultInstance;
                 SDKLogger.Info(Tag, $"Firebase signed in. UID={_firebaseUid}");
                 onComplete?.Invoke(true);
