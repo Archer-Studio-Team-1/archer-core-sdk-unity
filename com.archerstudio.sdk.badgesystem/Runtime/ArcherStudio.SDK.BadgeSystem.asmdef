@@ -1,0 +1,17 @@
+{
+    "name": "ArcherStudio.SDK.BadgeSystem",
+    "rootNamespace": "ArcherStudio.SDK.BadgeSystem",
+    "references": [
+        "XNode",
+        "ZString"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
