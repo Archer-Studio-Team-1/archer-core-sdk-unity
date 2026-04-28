@@ -15,5 +15,11 @@ namespace ArcherStudio.SDK.IAP {
         ProductInfo? GetProduct(string productId);
         SubscriptionInfo? GetSubscriptionInfo(string productId);
         bool IsInitialized { get; }
+
+        /// <summary>
+        /// True after FetchPurchases completes (success or failure).
+        /// Subscription state is only valid once this is true.
+        /// </summary>
+        bool IsPurchasesFetchCompleted { get; }
     }
 }

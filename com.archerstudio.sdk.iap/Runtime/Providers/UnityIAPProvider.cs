@@ -54,6 +54,7 @@ namespace ArcherStudio.SDK.IAP {
         private readonly HashSet<string> _activeSubscriptions = new HashSet<string>();
 
         public bool IsInitialized => _initialized;
+        public bool IsPurchasesFetchCompleted { get; private set; }
 
         // ─── IIAPProvider ───
 
@@ -110,8 +111,8 @@ namespace ArcherStudio.SDK.IAP {
                     $"Store connection failed: {e.Message}. " +
                     "IAP purchases will not be available. " +
                     "Will retry on next app launch.");
-                // Don't hang — mark fetch as completed so no one waits
                 _fetchCompleted = true;
+                IsPurchasesFetchCompleted = true; // unblock subscription waiters
             }
         }
 
@@ -356,6 +357,7 @@ namespace ArcherStudio.SDK.IAP {
                     "  - Invalid product IDs\n" +
                     "  - Unity IAP not configured in store dashboard");
                 _fetchCompleted = true;
+                IsPurchasesFetchCompleted = true; // unblock subscription waiters
             }
         }
 
@@ -416,6 +418,8 @@ namespace ArcherStudio.SDK.IAP {
         private void OnPurchasesFetched(Orders orders) {
             if (_disposed) return;
 
+            IsPurchasesFetchCompleted = true;
+
             var pendingCount = orders.PendingOrders?.Count ?? 0;
             var confirmedCount = orders.ConfirmedOrders?.Count ?? 0;
             var deferredCount = orders.DeferredOrders?.Count ?? 0;
@@ -470,6 +474,7 @@ namespace ArcherStudio.SDK.IAP {
         /// </summary>
         private void OnPurchasesFetchFailed(PurchasesFetchFailureDescription failure) {
             if (_disposed) return;
+            IsPurchasesFetchCompleted = true;
             SDKLogger.Warning(Tag,
                 $"Fetch purchases failed: {failure.FailureReason} - {failure.Message}. " +
                 "Pending purchases may not be processed until next attempt.");

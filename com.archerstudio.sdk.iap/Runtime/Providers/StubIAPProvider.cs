@@ -9,9 +9,11 @@ namespace ArcherStudio.SDK.IAP {
     /// </summary>
     public class StubIAPProvider : IIAPProvider {
         public bool IsInitialized { get; private set; }
+        public bool IsPurchasesFetchCompleted { get; private set; }
 
         public void Initialize(IAPConfig config, Action<bool> onComplete) {
             IsInitialized = true;
+            IsPurchasesFetchCompleted = true; // stub has no async fetch
             SDKLogger.Info("IAP-Stub", "Stub IAP provider initialized.");
             onComplete?.Invoke(true);
         }

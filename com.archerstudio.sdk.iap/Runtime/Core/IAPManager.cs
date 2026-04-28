@@ -29,6 +29,12 @@ namespace ArcherStudio.SDK.IAP {
 
         public event Action<PurchaseResult> OnPurchaseCompleted;
 
+        /// <summary>
+        /// True after FetchPurchases has completed (success or failure).
+        /// Callers should wait for this before trusting IsSubscribed().
+        /// </summary>
+        public bool IsSubscriptionStateReady => _provider?.IsPurchasesFetchCompleted ?? false;
+
         // ─── ISDKModule Lifecycle ───
 
         public void InitializeAsync(SDKCoreConfig coreConfig, Action<bool> onComplete) {
