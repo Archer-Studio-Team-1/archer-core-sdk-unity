@@ -2,7 +2,8 @@
     "name": "ArcherStudio.SDK.AppCheck.Editor",
     "rootNamespace": "ArcherStudio.SDK.AppCheck.Editor",
     "references": [
-        "ArcherStudio.SDK.AppCheck"
+        "ArcherStudio.SDK.AppCheck",
+        "ArcherStudio.SDK.Core"
     ],
     "includePlatforms": [
         "Editor"
