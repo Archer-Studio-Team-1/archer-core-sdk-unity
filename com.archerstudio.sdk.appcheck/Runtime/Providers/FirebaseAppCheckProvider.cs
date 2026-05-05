@@ -9,22 +9,29 @@ namespace ArcherStudio.SDK.AppCheck {
     public class FirebaseAppCheckProvider : IAppCheckProvider {
         private const string Tag = "AppCheck.Firebase";
         private FirebaseAppCheck _appCheck;
+        private readonly bool _useDebugProvider;
+
+        public FirebaseAppCheckProvider(bool useDebugProvider) {
+            _useDebugProvider = useDebugProvider;
+        }
 
         public void Initialize(AppCheckConfig config, Action<bool> onComplete) {
             try {
-                #if UNITY_ANDROID
-                FirebaseAppCheck.SetAppCheckProviderFactory(
-                    PlayIntegrityProviderFactory.Instance);
-                SDKLogger.Info(Tag, "Using Play Integrity provider (Android).");
-                #elif UNITY_IOS
-                FirebaseAppCheck.SetAppCheckProviderFactory(
-                    DeviceCheckProviderFactory.Instance);
-                SDKLogger.Info(Tag, "Using DeviceCheck provider (iOS).");
-                #else
-                FirebaseAppCheck.SetAppCheckProviderFactory(
-                    DebugProviderFactory.Instance);
-                SDKLogger.Warning(Tag, "Using Debug provider (Editor/unsupported platform).");
-                #endif
+                if (_useDebugProvider) {
+                    FirebaseAppCheck.SetAppCheckProviderFactory(
+                        DebugProviderFactory.Instance);
+                    SDKLogger.Warning(Tag, "Using Debug provider (dev build).");
+                } else {
+                    #if UNITY_ANDROID
+                    FirebaseAppCheck.SetAppCheckProviderFactory(
+                        PlayIntegrityProviderFactory.Instance);
+                    SDKLogger.Info(Tag, "Using Play Integrity provider (Android).");
+                    #elif UNITY_IOS
+                    FirebaseAppCheck.SetAppCheckProviderFactory(
+                        DeviceCheckProviderFactory.Instance);
+                    SDKLogger.Info(Tag, "Using DeviceCheck provider (iOS).");
+                    #endif
+                }
 
                 _appCheck = FirebaseAppCheck.DefaultInstance;
                 SDKLogger.Info(Tag, "Firebase App Check initialized.");
@@ -37,7 +44,6 @@ namespace ArcherStudio.SDK.AppCheck {
 
         public void GetToken(Action<string> onToken) {
             if (_appCheck == null) {
-                SDKLogger.Warning(Tag, "App Check not initialized. Returning null token.");
                 onToken?.Invoke(null);
                 return;
             }
@@ -51,9 +57,7 @@ namespace ArcherStudio.SDK.AppCheck {
                         return;
                     }
 
-                    var result = task.Result;
-                    SDKLogger.Debug(Tag, "Got App Check token.");
-                    onToken?.Invoke(result.Token);
+                    onToken?.Invoke(task.Result.Token);
                 });
         }
 

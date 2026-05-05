@@ -7,7 +7,8 @@ namespace ArcherStudio.SDK.AppCheck {
     public class AppCheckConfig : ModuleConfigBase {
 
         [Header("App Check Settings")]
-        [Tooltip("Use Debug provider in Editor for testing.")]
-        public bool UseDebugProviderInEditor = true;
+        [Tooltip("Use Firebase Debug Provider on development builds (non-PRODUCTION). " +
+                 "Allows testing App Check flow without Play Integrity / DeviceCheck.")]
+        public bool UseDebugProviderInDev = false;
     }
 }
