@@ -1,0 +1,18 @@
+{
+    "name": "ArcherStudio.SDK.AppCheck.Editor",
+    "rootNamespace": "ArcherStudio.SDK.AppCheck.Editor",
+    "references": [
+        "ArcherStudio.SDK.AppCheck"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": false,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

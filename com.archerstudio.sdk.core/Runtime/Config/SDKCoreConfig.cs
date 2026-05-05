@@ -40,5 +40,13 @@ namespace ArcherStudio.SDK.Core {
         public bool EnableDeepLink = false;
         public bool EnableTestLab = false;
         public bool EnableCloudSave = false;
+        public bool EnableAppCheck = false;
+
+        [Header("Loading Overlay")]
+        [Tooltip("Show a full-screen loading overlay during SDK async operations (e.g. server receipt validation).")]
+        public bool ShowLoadingOverlay = true;
+
+        [Tooltip("Auto-dismiss timeout in seconds. 0 = no timeout (manual dismiss only).")]
+        public float LoadingOverlayTimeout = 15f;
     }
 }

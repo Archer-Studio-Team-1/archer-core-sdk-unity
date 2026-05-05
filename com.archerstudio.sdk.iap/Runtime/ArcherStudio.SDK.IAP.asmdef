@@ -5,6 +5,7 @@
     "ArcherStudio.SDK.Core",
     "ArcherStudio.SDK.Consent",
     "ArcherStudio.SDK.Tracking",
+    "ArcherStudio.SDK.AppCheck",
     "Unity.Purchasing",
     "Unity.Services.Core"
   ],
@@ -25,6 +26,11 @@
       "name": "com.unity.services.core",
       "expression": "",
       "define": "HAS_UNITY_SERVICES"
+    },
+    {
+      "name": "com.archerstudio.sdk.appcheck",
+      "expression": "1.0.0",
+      "define": "HAS_SDK_APPCHECK"
     }
   ],
   "noEngineReferences": false

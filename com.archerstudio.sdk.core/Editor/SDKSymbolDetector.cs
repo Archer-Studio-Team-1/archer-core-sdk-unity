@@ -102,6 +102,9 @@ namespace ArcherStudio.SDK.Core.Editor {
 
             // Testing
             new SDKSymbolEntry("HAS_TESTLAB",                "ArcherStudio.SDK.TestLab.GameLoopHandler",   "Firebase Test Lab"),
+
+            // App Check
+            new SDKSymbolEntry("HAS_FIREBASE_APP_CHECK",     "Firebase.AppCheck.FirebaseAppCheck",         "Firebase App Check"),
         };
 
         // ═══════════════════════════════════════════════════════

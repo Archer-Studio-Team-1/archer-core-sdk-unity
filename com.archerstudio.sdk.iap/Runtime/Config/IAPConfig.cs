@@ -17,6 +17,9 @@ namespace ArcherStudio.SDK.IAP {
 
         [Tooltip("Server URL for receipt validation (if enabled).")]
         public string ValidationServerUrl;
+
+        [Tooltip("API key for server validation authentication (matches IAP_API_KEY on server).")]
+        public string ValidationApiKey;
     }
 
     [Serializable]

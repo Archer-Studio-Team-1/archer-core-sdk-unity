@@ -29,6 +29,16 @@ namespace ArcherStudio.SDK.IAP {
         }
 
         /// <summary>
+        /// Start a coroutine on the runner. Used by ServerReceiptValidator for async HTTP.
+        /// Returns silently if the application is quitting.
+        /// </summary>
+        public static Coroutine Run(IEnumerator coroutine) {
+            if (coroutine == null || _applicationIsQuitting) return null;
+            var runner = Instance;
+            return runner != null ? runner.StartCoroutine(coroutine) : null;
+        }
+
+        /// <summary>
         /// Invoke an action after a delay (in seconds) on the main thread.
         /// Returns silently if the application is quitting.
         /// </summary>

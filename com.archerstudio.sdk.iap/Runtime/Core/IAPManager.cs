@@ -90,6 +90,15 @@ namespace ArcherStudio.SDK.IAP {
                 $"Initializing IAP provider ({_provider.GetType().Name}) " +
                 $"with {_config.Products.Count} products...");
 
+            // Step 6: Auto-setup ServerReceiptValidator if configured
+            if (_config.EnableReceiptValidation &&
+                !string.IsNullOrEmpty(_config.ValidationServerUrl) &&
+                _receiptValidator == null) {
+                _receiptValidator = new ServerReceiptValidator(
+                    _config.ValidationServerUrl, _config.ValidationApiKey);
+                SDKLogger.Info(Tag, "ServerReceiptValidator auto-configured.");
+            }
+
             _provider.Initialize(_config, success => {
                 if (success) {
                     SDKLogger.Info(Tag,
@@ -152,23 +161,30 @@ namespace ArcherStudio.SDK.IAP {
                 if (result.Success) {
                     SDKLogger.Info(Tag, $"Purchase succeeded: {productId}");
 
-                    // Validate receipt if configured
+                    // Validate receipt server-side if configured (blocking)
                     if (_config.EnableReceiptValidation && _receiptValidator != null) {
                         _receiptValidator.Validate(result.Receipt, productId, validation => {
-                            if (!validation.IsValid) {
+                            if (validation.IsValid) {
+                                CompletePurchaseSuccess(result, source);
+                                OnPurchaseCompleted?.Invoke(result);
+                                onComplete?.Invoke(result);
+                            } else {
                                 SDKLogger.Warning(Tag,
-                                    $"Receipt validation failed for {productId}: {validation.ErrorMessage}");
+                                    $"Receipt validation REJECTED for {productId}: {validation.ErrorMessage}. " +
+                                    "Purchase will NOT be granted.");
+                                var rejected = PurchaseResult.Failed(
+                                    productId,
+                                    $"Server validation failed: {validation.ErrorMessage}",
+                                    PurchaseFailureReason.SignatureInvalid);
+                                OnPurchaseCompleted?.Invoke(rejected);
+                                onComplete?.Invoke(rejected);
                             }
                         });
+                        return; // Wait for async validation callback
                     }
 
-                    // Track IAP revenue through all providers
-                    // Firebase: logs "in_app_purchase" event
-                    // Adjust: verifies receipt + tracks revenue internally
-                    TrackIAPRevenue(result, source);
-
-                    // Publish SDK event
-                    SDKEventBus.Publish(new PurchaseCompletedEvent(result));
+                    // No validation configured — grant immediately
+                    CompletePurchaseSuccess(result, source);
                 } else {
                     SDKLogger.Warning(Tag,
                         $"Purchase failed: {productId} - {result.ErrorMessage}");
@@ -235,6 +251,22 @@ namespace ArcherStudio.SDK.IAP {
             #else
             SDKLogger.Warning(Tag, "OpenSubscriptionManagement: not supported on this platform.");
             #endif
+        }
+
+        // ─── Internal: Purchase completion ───
+
+        /// <summary>
+        /// Finalize a successful purchase: track revenue and publish event.
+        /// Called after server validation passes (or immediately if validation is disabled).
+        /// </summary>
+        private void CompletePurchaseSuccess(PurchaseResult result, string source) {
+            // Track IAP revenue through all providers
+            // Firebase: logs "in_app_purchase" event
+            // Adjust: verifies receipt + tracks revenue internally
+            TrackIAPRevenue(result, source);
+
+            // Publish SDK event
+            SDKEventBus.Publish(new PurchaseCompletedEvent(result));
         }
 
         // ─── IAP Revenue Tracking ───

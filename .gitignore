@@ -11,3 +11,6 @@ Thumbs.db
 
 # Unity build artifacts
 *.unitypackage
+
+# Separate repos
+firebase-functions/
