@@ -50,7 +50,9 @@ Core tự phát hiện SDK đã cài qua `SDKSymbolDetector` và set symbol tư�
 | `HAS_GOOGLE_UMP` | Google User Messaging Platform |
 | `HAS_UNITY_IAP` | Unity IAP v5 |
 | `HAS_FACEBOOK_SDK` | Facebook SDK |
-| `HAS_GPGS_V2` | Google Play Games Services v2 |
+| `HAS_GPGS` | Google Play Games Services |
+| `HAS_FIREBASE_APP_CHECK` | Firebase App Check |
+| `HAS_SDK_APPCHECK` | SDK appcheck package installed (auto via asmdef versionDefines) |
 
 Khi thêm provider mới → thêm symbol, update `SDKSymbolDetector`, bọc code bằng `#if`.
 
@@ -75,15 +77,17 @@ Game scene khởi động
 
 ```
 core ──┬── consent ──┬── tracking ──┬── ads
-       │             │              └── iap
+       │             │              └── iap ←── appcheck (soft dep, #if HAS_SDK_APPCHECK)
        │             └── login
+       ├── appcheck
        ├── deeplink
        ├── push
        ├── remoteconfig
+       ├── badgesystem
        └── testlab
 ```
 
-Version pinning ở `package.json` dùng semver; bump tag theo pattern `vX.Y.Z`. Đừng downgrade `com.archerstudio.sdk.core` dependency của module khi bump version.
+Version pinning ở `package.json` dùng semver; bump tag theo pattern `<name>/vX.Y.Z`. Đừng downgrade `com.archerstudio.sdk.core` dependency của module khi bump version.
 
 ## 6. Quy ước code
 
@@ -112,17 +116,47 @@ Version pinning ở `package.json` dùng semver; bump tag theo pattern `vX.Y.Z`.
 
 ## 8. Branching & versioning
 
-- `main` = nhánh phát hành, tag theo package: `<package>/vX.Y.Z` hoặc tag chung `vX.Y.Z` (đang dùng chung).
-- Mỗi thay đổi module → bump `version` trong `package.json` của package đó (SemVer). Consumer repo chọn tag chính xác.
+- `main` = nhánh phát hành.
+- **Tag per-package**: `<name>/v<X.Y.Z>` (e.g. `core/v1.2.0`, `iap/v1.1.0`, `appcheck/v1.0.0`).
+- Consumer manifest trỏ tag cụ thể: `...git?path=com.archerstudio.sdk.iap#iap/v1.1.0`.
+- Mỗi thay đổi module → bump `version` trong `package.json` của package đó (SemVer).
+- Khi bump version → tạo tag → push tag: `git tag <name>/v<X.Y.Z> && git push origin <name>/v<X.Y.Z>`.
 - Commit style: `feat(<scope>): …`, `fix(<scope>): …`, scope là tên module (`login`, `iap`, `ads`…).
+- Không tạo tag cho package chưa thay đổi. Chỉ tag package có diff so với tag trước.
 
-## 9. Testing
+## 9. Security config per-environment
+
+`SDKCoreConfig` chứa `SDKSecurityConfig` riêng cho 3 môi trường: **Editor**, **Dev**, **Production**.
+
+| Setting | Editor | Dev | Production |
+|---------|--------|-----|------------|
+| `EnableAppCheck` | `false` | `false` | `true` |
+| `EnableIAPServerValidation` | `false` | `false` | `true` |
+
+Runtime chọn config qua `SDKCoreConfig.GetActiveSecurityConfig()`:
+- `UNITY_EDITOR` → Editor config
+- `PRODUCTION` symbol → Production config
+- Còn lại → Dev config
+
+**App Check** (`com.archerstudio.sdk.appcheck`):
+- Production: Play Integrity (Android) / DeviceCheck (iOS) — real attestation.
+- Dev + `AppCheckConfig.UseDebugProviderInDev=true`: Firebase Debug Provider.
+- Dev + `UseDebugProviderInDev=false` hoặc Editor: Stub (null token, IAP vẫn hoạt động).
+
+**IAP Server Validation** (`ServerReceiptValidator`):
+- Khi `EnableIAPServerValidation=false` → không tạo validator, không gọi API, purchase grant ngay.
+- Khi `true` → blocking validation: store confirm → server verify → cấp reward. Fail-close policy.
+- Loading overlay hiện trong lúc chờ server (config: `ShowLoadingOverlay`, `LoadingOverlayTimeout`).
+
+**Quy tắc**: Khi tắt security cho môi trường nào → **không tốn tài nguyên** (không gọi network, không tạo object). IAP mua hàng hoạt động bình thường ở mọi môi trường.
+
+## 10. Testing
 
 - Unit tests chạy qua Unity Test Runner (NUnit). Chỉ test Runtime assembly.
 - Core tests (đầy đủ): `DependencyGraph`, `ModuleRegistry`, `SDKEventBus`, `SDKModuleFactory`, `ConsentStatus`. Dùng làm reference khi viết test cho module mới.
 - Không mock `UnityEngine.Debug`. Dùng `SDKLogger` để inject test buffer.
 
-## 10. Những file Claude phải đọc trước khi edit
+## 11. Những file Claude phải đọc trước khi edit
 
 | Khi bạn sửa… | Đọc trước… |
 |---|---|
@@ -131,9 +165,12 @@ Version pinning ở `package.json` dùng semver; bump tag theo pattern `vX.Y.Z`.
 | Consent propagation | `Core/Runtime/Interfaces/IConsentAware.cs`, `Consent/Runtime/ConsentManager.cs` |
 | Thêm symbol | `Core/Editor/SDKSymbolDetector.cs` |
 | Config wizard | `Core/Editor/SDKSetupWizard.cs` |
+| Security / App Check | `Core/Runtime/Config/SDKCoreConfig.cs` (SDKSecurityConfig), `AppCheck/Runtime/AppCheckManager.cs` |
+| IAP server validation | `IAP/Runtime/Core/IAPManager.cs`, `IAP/Runtime/Providers/ServerReceiptValidator.cs` |
+| Loading overlay | `Core/Runtime/UI/SDKLoadingOverlay.cs`, `Core/Editor/SDKLoadingOverlayPrefabCreator.cs` |
 | Module mới | `docs/ARCHITECTURE.md` và module gần giống nhất trong `docs/modules/` |
 
-## 11. Không được làm
+## 12. Không được làm
 
 - Không gọi `new TrackingManager()` thủ công. Module tự register.
 - Không thêm dependency vendor SDK thẳng vào `package.json` (để consumer tự chọn phiên bản). Chỉ dùng symbol.
@@ -141,7 +178,7 @@ Version pinning ở `package.json` dùng semver; bump tag theo pattern `vX.Y.Z`.
 - Không hardcode secret (ad unit id, app token) trong code. Luôn qua ConfigSO.
 - Không đổi `ModuleId` sau khi package đã release — nó là contract.
 
-## 12. Tài liệu liên quan
+## 13. Tài liệu liên quan
 
 - [`README.md`](README.md) — cài đặt & bảng packages.
 - [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — kiến trúc tổng thể.
