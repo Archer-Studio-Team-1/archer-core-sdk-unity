@@ -166,7 +166,8 @@ namespace ArcherStudio.SDK.IAP {
 
             var result = new List<ProductInfo>();
             foreach (var product in _controller.GetProducts()) {
-                if (product.availableToPurchase) {
+                if (product.availableToPurchase ||
+                    product.definition.type == UnityEngine.Purchasing.ProductType.Subscription) {
                     result.Add(MapProduct(product));
                 }
             }
@@ -177,7 +178,13 @@ namespace ArcherStudio.SDK.IAP {
             if (!_initialized) return null;
 
             var product = _controller.GetProductById(productId);
-            if (product == null || !product.availableToPurchase) return null;
+            if (product == null) {
+                product = FindProductByStoreId(productId);
+            }
+            if (product == null) return null;
+            if (!product.availableToPurchase &&
+                product.definition.type != UnityEngine.Purchasing.ProductType.Subscription)
+                return null;
             return MapProduct(product);
         }
 
@@ -189,15 +196,25 @@ namespace ArcherStudio.SDK.IAP {
         /// Detailed fields (ExpirationDate, etc.) require server-side receipt validation.
         /// </summary>
         public SubscriptionInfo? GetSubscriptionInfo(string productId) {
-            if (!_initialized || _controller == null) return null;
+            if (!_initialized || _controller == null) {
+                SDKLogger.Debug(Tag, $"GetSubscriptionInfo({productId}): not initialized or controller null");
+                return null;
+            }
 
             var product = _controller.GetProductById(productId);
-            if (product == null || product.definition.type != UnityEngine.Purchasing.ProductType.Subscription)
+            if (product == null) {
+                product = FindProductByStoreId(productId);
+            }
+            if (product == null || product.definition.type != UnityEngine.Purchasing.ProductType.Subscription) {
+                SDKLogger.Debug(Tag, $"GetSubscriptionInfo({productId}): product={product != null}, " +
+                    $"type={product?.definition.type}");
                 return null;
+            }
 
-            if (!product.availableToPurchase) return null;
-
-            bool isActive = _activeSubscriptions.Contains(productId);
+            var definitionId = product.definition.id;
+            bool isActive = _activeSubscriptions.Contains(definitionId);
+            SDKLogger.Info(Tag, $"GetSubscriptionInfo({productId}): definitionId={definitionId}, " +
+                $"isActive={isActive}, activeSubscriptions=[{string.Join(", ", _activeSubscriptions)}]");
             return new SubscriptionInfo(
                 productId,
                 isSubscribed: isActive,
@@ -637,6 +654,20 @@ namespace ArcherStudio.SDK.IAP {
             if (product.definition.type == UnityEngine.Purchasing.ProductType.Subscription) {
                 _activeSubscriptions.Add(product.definition.id);
             }
+        }
+
+        /// <summary>
+        /// Fallback lookup: find product by storeSpecificId when GetProductById (which uses definition.id) returns null.
+        /// This handles the case where callers pass store IDs (e.g. "com.archer.idk.vip30")
+        /// but the product's definition.id is different (e.g. "vip30days").
+        /// </summary>
+        private UnityEngine.Purchasing.Product FindProductByStoreId(string storeId) {
+            if (_controller == null) return null;
+            foreach (var product in _controller.GetProducts()) {
+                if (product.definition.storeSpecificId == storeId)
+                    return product;
+            }
+            return null;
         }
 
         // ─── Mapping ───
