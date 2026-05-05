@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 
 namespace ArcherStudio.SDK.Core {
@@ -5,6 +6,19 @@ namespace ArcherStudio.SDK.Core {
     public enum SDKEnvironment {
         Development,
         Production
+    }
+
+    /// <summary>
+    /// Per-environment security settings for App Check and IAP validation.
+    /// </summary>
+    [Serializable]
+    public class SDKSecurityConfig {
+        [Tooltip("Enable App Check / Play Integrity attestation in this environment.")]
+        public bool EnableAppCheck = false;
+
+        [Tooltip("Enable server-side IAP receipt validation in this environment. " +
+                 "When disabled, purchases are granted immediately without server call.")]
+        public bool EnableIAPServerValidation = false;
     }
 
     /// <summary>
@@ -40,7 +54,24 @@ namespace ArcherStudio.SDK.Core {
         public bool EnableDeepLink = false;
         public bool EnableTestLab = false;
         public bool EnableCloudSave = false;
-        public bool EnableAppCheck = false;
+
+        [Header("Security — Editor")]
+        public SDKSecurityConfig Editor = new SDKSecurityConfig {
+            EnableAppCheck = false,
+            EnableIAPServerValidation = false,
+        };
+
+        [Header("Security — Development Build")]
+        public SDKSecurityConfig Dev = new SDKSecurityConfig {
+            EnableAppCheck = false,
+            EnableIAPServerValidation = false,
+        };
+
+        [Header("Security — Production Build")]
+        public SDKSecurityConfig Production = new SDKSecurityConfig {
+            EnableAppCheck = true,
+            EnableIAPServerValidation = true,
+        };
 
         [Header("Loading Overlay")]
         [Tooltip("Show a full-screen loading overlay during SDK async operations (e.g. server receipt validation).")]
@@ -48,5 +79,22 @@ namespace ArcherStudio.SDK.Core {
 
         [Tooltip("Auto-dismiss timeout in seconds. 0 = no timeout (manual dismiss only).")]
         public float LoadingOverlayTimeout = 15f;
+
+        /// <summary>
+        /// Returns the security config for the current runtime environment.
+        /// Editor → Editor config, PRODUCTION symbol → Production config, otherwise → Dev config.
+        /// </summary>
+        public SDKSecurityConfig GetActiveSecurityConfig() {
+            #if UNITY_EDITOR
+            return Editor;
+            #elif PRODUCTION
+            return Production;
+            #else
+            return Dev;
+            #endif
+        }
+
+        // Backward compat — modules that read EnableAppCheck directly
+        public bool EnableAppCheck => GetActiveSecurityConfig().EnableAppCheck;
     }
 }

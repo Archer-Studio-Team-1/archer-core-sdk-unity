@@ -26,6 +26,7 @@ namespace ArcherStudio.SDK.IAP {
         private IIAPProvider _provider;
         private IReceiptValidator _receiptValidator;
         private IAPConfig _config;
+        private bool _serverValidationEnabled;
 
         public event Action<PurchaseResult> OnPurchaseCompleted;
 
@@ -90,13 +91,19 @@ namespace ArcherStudio.SDK.IAP {
                 $"Initializing IAP provider ({_provider.GetType().Name}) " +
                 $"with {_config.Products.Count} products...");
 
-            // Step 6: Auto-setup ServerReceiptValidator if configured
-            if (_config.EnableReceiptValidation &&
-                !string.IsNullOrEmpty(_config.ValidationServerUrl) &&
-                _receiptValidator == null) {
+            // Step 6: Auto-setup ServerReceiptValidator
+            // Requires both IAPConfig.EnableReceiptValidation AND environment security toggle
+            var securityConfig = coreConfig.GetActiveSecurityConfig();
+            _serverValidationEnabled = _config.EnableReceiptValidation
+                && securityConfig.EnableIAPServerValidation
+                && !string.IsNullOrEmpty(_config.ValidationServerUrl);
+
+            if (_serverValidationEnabled && _receiptValidator == null) {
                 _receiptValidator = new ServerReceiptValidator(
                     _config.ValidationServerUrl, _config.ValidationApiKey);
                 SDKLogger.Info(Tag, "ServerReceiptValidator auto-configured.");
+            } else if (!_serverValidationEnabled) {
+                SDKLogger.Info(Tag, "Server receipt validation disabled for this environment.");
             }
 
             _provider.Initialize(_config, success => {
@@ -161,8 +168,8 @@ namespace ArcherStudio.SDK.IAP {
                 if (result.Success) {
                     SDKLogger.Info(Tag, $"Purchase succeeded: {productId}");
 
-                    // Validate receipt server-side if configured (blocking)
-                    if (_config.EnableReceiptValidation && _receiptValidator != null) {
+                    // Validate receipt server-side if enabled for this environment
+                    if (_serverValidationEnabled && _receiptValidator != null) {
                         _receiptValidator.Validate(result.Receipt, productId, validation => {
                             if (validation.IsValid) {
                                 CompletePurchaseSuccess(result, source);

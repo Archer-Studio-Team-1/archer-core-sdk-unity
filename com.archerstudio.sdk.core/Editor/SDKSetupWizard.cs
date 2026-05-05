@@ -382,7 +382,7 @@ namespace ArcherStudio.SDK.Core.Editor {
                 _enableRemoteConfig = coreConfig.EnableRemoteConfig; _enablePush = coreConfig.EnablePush;
                 _enableDeepLink = coreConfig.EnableDeepLink; _enableTestLab = coreConfig.EnableTestLab;
                 _enableCloudSave = coreConfig.EnableCloudSave;
-                _enableAppCheck = coreConfig.EnableAppCheck;
+                _enableAppCheck = coreConfig.Production.EnableAppCheck;
             }
 
             var trackingAsset = AssetDatabase.LoadAssetAtPath<ScriptableObject>($"{ResourcesPath}/TrackingConfig.asset");
@@ -431,7 +431,9 @@ namespace ArcherStudio.SDK.Core.Editor {
                 coreConfig.EnableRemoteConfig = toggles.RemoteConfig; coreConfig.EnablePush = toggles.Push;
                 coreConfig.EnableDeepLink = toggles.DeepLink; coreConfig.EnableTestLab = toggles.TestLab;
                 coreConfig.EnableCloudSave = toggles.CloudSave;
-                coreConfig.EnableAppCheck = toggles.AppCheck;
+                if (toggles.AppCheck) {
+                    coreConfig.Production.EnableAppCheck = true;
+                }
                 EditorUtility.SetDirty(coreConfig);
             }
             UpdateModuleField("TrackingConfig", "AdjustAppToken", _adjustToken);

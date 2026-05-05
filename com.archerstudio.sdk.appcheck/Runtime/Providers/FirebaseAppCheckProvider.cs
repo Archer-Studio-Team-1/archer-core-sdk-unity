@@ -19,7 +19,7 @@ namespace ArcherStudio.SDK.AppCheck {
             try {
                 if (_useDebugProvider) {
                     FirebaseAppCheck.SetAppCheckProviderFactory(
-                        DebugProviderFactory.Instance);
+                        Firebase.AppCheck.DebugAppCheckProviderFactory.Instance);
                     SDKLogger.Warning(Tag, "Using Debug provider (dev build).");
                 } else {
                     #if UNITY_ANDROID

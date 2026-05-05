@@ -36,27 +36,19 @@ namespace ArcherStudio.SDK.AppCheck {
             State = ModuleState.Initializing;
             Instance = this;
 
-            #if UNITY_EDITOR
-            SDKLogger.Info(Tag, "Editor detected. App Check disabled (stub).");
-            _provider = new StubAppCheckProvider();
-            _provider.Initialize(null, _ => {
-                State = ModuleState.Ready;
-                onComplete?.Invoke(true);
-            });
-            return;
-            #endif
+            var security = coreConfig.GetActiveSecurityConfig();
+            if (!security.EnableAppCheck) {
+                SDKLogger.Info(Tag, "App Check disabled for this environment.");
+                InitStub(onComplete);
+                return;
+            }
 
-            #pragma warning disable CS0162
             var config = Resources.Load<AppCheckConfig>("AppCheckConfig");
             if (config == null || !config.Enabled) {
                 SDKLogger.Info(Tag, config == null
                     ? "AppCheckConfig not found. App Check inactive."
                     : "AppCheckConfig.Enabled=false. App Check inactive.");
-                _provider = new StubAppCheckProvider();
-                _provider.Initialize(null, _ => {
-                    State = ModuleState.Ready;
-                    onComplete?.Invoke(true);
-                });
+                InitStub(onComplete);
                 return;
             }
 
@@ -66,9 +58,8 @@ namespace ArcherStudio.SDK.AppCheck {
                 SDKLogger.Info(Tag, success
                     ? "AppCheckManager initialized."
                     : "AppCheckManager failed. IAP will work without App Check token.");
-                onComplete?.Invoke(true); // never block other modules
+                onComplete?.Invoke(true);
             });
-            #pragma warning restore CS0162
         }
 
         public void OnConsentChanged(ConsentStatus consent) { }
@@ -78,6 +69,14 @@ namespace ArcherStudio.SDK.AppCheck {
             _provider = null;
             Instance = null;
             State = ModuleState.Disposed;
+        }
+
+        private void InitStub(Action<bool> onComplete) {
+            _provider = new StubAppCheckProvider();
+            _provider.Initialize(null, _ => {
+                State = ModuleState.Ready;
+                onComplete?.Invoke(true);
+            });
         }
 
         public void GetToken(Action<string> onToken) {
