@@ -76,11 +76,21 @@ namespace ArcherStudio.SDK.IAP {
         public bool IsValid { get; }
         public string ProductId { get; }
         public string ErrorMessage { get; }
+        public bool IsTestPurchase { get; }
 
-        public ReceiptValidationResult(bool isValid, string productId, string errorMessage) {
+        /// <summary>
+        /// True when validation failed due to network/server issues (timeout, 5xx, rate limit)
+        /// rather than an invalid receipt. These purchases should be retried later.
+        /// </summary>
+        public bool IsRetryable { get; }
+
+        public ReceiptValidationResult(bool isValid, string productId, string errorMessage,
+            bool isTestPurchase = false, bool isRetryable = false) {
             IsValid = isValid;
             ProductId = productId;
             ErrorMessage = errorMessage;
+            IsTestPurchase = isTestPurchase;
+            IsRetryable = isRetryable;
         }
     }
 

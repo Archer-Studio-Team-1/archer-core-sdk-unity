@@ -91,6 +91,8 @@ namespace ArcherStudio.SDK.Tracking {
         public const string PAR_PURCHASE_STATUS = "purchase_status";
         public const string PAR_FAIL_REASON = "fail_reason";
         public const string PAR_RESULT_CODE = "result_code";
+        public const string PAR_PURCHASE_CURRENCY = "purchase_currency";
+        public const string PAR_IAP_REVENUE_ORIGIN_MICRO = "iap_revenue_origin_micro";
 
         // ─── Resource Sources ───
         public const string SOURCE_MAIN = "main";

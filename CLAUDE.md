@@ -4,6 +4,14 @@ Hướng dẫn cho Claude (và dev) khi làm việc trong repo này. Đọc cùn
 
 ---
 
+## 0. Workspace paths
+
+| Repo | Path | Mô tả |
+|------|------|-------|
+| **IDK** (game project) | `/Volumes/WORKSPACE/Team01/IDK` | Unity game project tiêu thụ SDK |
+| **SDK** (mono-repo) | `/Volumes/WORKSPACE/Team01/archer-core-sdk-unity` | Archer Studio SDK packages |
+| **Functions** (backend) | `/Volumes/WORKSPACE/Team01/firebase-functions` | Firebase Cloud Functions (IAP validation, subscription) |
+
 ## 1. Repo là gì
 
 Mono‑repo chứa **các UPM packages** phân phối qua git URL (xem `README.md`). Mỗi folder `com.archerstudio.sdk.*` là một package Unity độc lập có `package.json`, `Runtime/`, `Editor/`, `Tests/` riêng.

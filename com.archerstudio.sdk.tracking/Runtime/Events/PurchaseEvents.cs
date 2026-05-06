@@ -11,15 +11,21 @@ namespace ArcherStudio.SDK.Tracking.Events {
 
         private readonly string _productId;
         private readonly int _iapRevenueMicro;
+        private readonly string _purchaseCurrency;
+        private readonly int _iapRevenueOriginMicro;
         private readonly string _purchaseStatus;
         private readonly string _failReason;
         private readonly string _resultCode;
         private readonly string _placement;
 
-        public IapRevenueEvent(string productId, int iapRevenueMicro, string purchaseStatus,
+        public IapRevenueEvent(string productId, int iapRevenueMicro,
+            string purchaseCurrency, int iapRevenueOriginMicro,
+            string purchaseStatus,
             string failReason = null, string resultCode = null, string placement = null) {
             _productId = productId;
             _iapRevenueMicro = iapRevenueMicro;
+            _purchaseCurrency = purchaseCurrency;
+            _iapRevenueOriginMicro = iapRevenueOriginMicro;
             _purchaseStatus = purchaseStatus;
             _failReason = failReason;
             _resultCode = resultCode;
@@ -29,6 +35,8 @@ namespace ArcherStudio.SDK.Tracking.Events {
         protected override void BuildParams(Dictionary<string, object> dict) {
             dict.Add(TrackingConstants.PAR_PRODUCT_ID, _productId ?? "Null");
             dict.Add(TrackingConstants.PAR_IAP_REVENUE_MICRO, _iapRevenueMicro);
+            dict.Add(TrackingConstants.PAR_PURCHASE_CURRENCY, _purchaseCurrency ?? "USD");
+            dict.Add(TrackingConstants.PAR_IAP_REVENUE_ORIGIN_MICRO, _iapRevenueOriginMicro);
             dict.Add(TrackingConstants.PAR_PURCHASE_STATUS, _purchaseStatus ?? "Null");
             dict.Add(TrackingConstants.PAR_FAIL_REASON, _failReason ?? "Null");
             dict.Add(TrackingConstants.PAR_RESULT_CODE, _resultCode ?? "Null");

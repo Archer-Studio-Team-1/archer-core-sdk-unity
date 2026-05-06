@@ -136,7 +136,8 @@ namespace ArcherStudio.SDK.IAP {
                     yield return new WaitForSecondsRealtime(delay);
                     yield return SendWithRetry(jsonPayload, productId, attempt + 1, onComplete);
                 } else {
-                    onComplete?.Invoke(new ReceiptValidationResult(false, productId, "Rate limited after retries"));
+                    onComplete?.Invoke(new ReceiptValidationResult(false, productId, "Rate limited after retries",
+                        isRetryable: true));
                 }
                 yield break;
             }
@@ -157,7 +158,8 @@ namespace ArcherStudio.SDK.IAP {
                     SDKLogger.Error(Tag,
                         $"Server validation failed after {MaxRetries + 1} attempts for {productId}. " +
                         "Purchase REJECTED (fail-close policy).");
-                    onComplete?.Invoke(new ReceiptValidationResult(false, productId, "Server unreachable after retries"));
+                    onComplete?.Invoke(new ReceiptValidationResult(false, productId, "Server unreachable after retries",
+                        isRetryable: true));
                 }
                 yield break;
             }
@@ -169,8 +171,10 @@ namespace ArcherStudio.SDK.IAP {
 
                     if (response.valid) {
                         SDKLogger.Info(Tag, $"Server validated purchase: {productId}" +
-                            (response.duplicate ? " (duplicate)" : ""));
-                        onComplete?.Invoke(new ReceiptValidationResult(true, productId, null));
+                            (response.duplicate ? " (duplicate)" : "") +
+                            (response.isTestPurchase ? " (test)" : ""));
+                        onComplete?.Invoke(new ReceiptValidationResult(
+                            true, productId, null, response.isTestPurchase));
                     } else {
                         SDKLogger.Warning(Tag,
                             $"Server rejected purchase {productId}: {response.error}");
@@ -277,6 +281,7 @@ namespace ArcherStudio.SDK.IAP {
             public string transactionId;
             public string error;
             public bool duplicate;
+            public bool isTestPurchase;
         }
 
         [Serializable]

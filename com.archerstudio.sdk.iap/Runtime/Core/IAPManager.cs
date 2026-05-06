@@ -27,6 +27,7 @@ namespace ArcherStudio.SDK.IAP {
         private IReceiptValidator _receiptValidator;
         private IAPConfig _config;
         private bool _serverValidationEnabled;
+        private PendingPurchaseStore _pendingStore;
 
         public event Action<PurchaseResult> OnPurchaseCompleted;
 
@@ -106,12 +107,18 @@ namespace ArcherStudio.SDK.IAP {
                 SDKLogger.Info(Tag, "Server receipt validation disabled for this environment.");
             }
 
+            _pendingStore = new PendingPurchaseStore();
+
             _provider.Initialize(_config, success => {
                 if (success) {
                     SDKLogger.Info(Tag,
                         $"IAPManager initialized successfully. " +
                         $"{_config.Products.Count} products configured.");
                     State = ModuleState.Ready;
+
+                    if (_serverValidationEnabled && _pendingStore.Count > 0) {
+                        RetryPendingPurchases();
+                    }
                 } else {
                     SDKLogger.Error(Tag,
                         "IAP provider failed to initialize. " +
@@ -151,20 +158,7 @@ namespace ArcherStudio.SDK.IAP {
                 return;
             }
 
-            var trackingManager = TrackingManager.Instance;
-
             _provider.Purchase(productId, result => {
-                // Track iap_revenue custom event (v2)
-                var productInfo = _provider?.GetProduct(productId);
-                double revenue = productInfo.HasValue ? (double)productInfo.Value.PriceDecimal : 0;
-                int revenueMicro = (int)(revenue * 1_000_000);
-                string status = result.Success ? "success" : "fail";
-                string failReason = result.Success ? null : result.ErrorMessage;
-                string resultCode = result.Success ? null : MapToBillingResponseCode(result.FailureReason);
-
-                trackingManager?.Track(new IapRevenueEvent(
-                    productId, revenueMicro, status, failReason, resultCode, reason));
-
                 if (result.Success) {
                     SDKLogger.Info(Tag, $"Purchase succeeded: {productId}");
 
@@ -172,7 +166,17 @@ namespace ArcherStudio.SDK.IAP {
                     if (_serverValidationEnabled && _receiptValidator != null) {
                         _receiptValidator.Validate(result.Receipt, productId, validation => {
                             if (validation.IsValid) {
-                                CompletePurchaseSuccess(result, source);
+                                CompletePurchaseSuccess(result, source, validation.IsTestPurchase);
+                                OnPurchaseCompleted?.Invoke(result);
+                                onComplete?.Invoke(result);
+                            } else if (validation.IsRetryable) {
+                                // Server unreachable — user already charged. Save for retry.
+                                _pendingStore.Add(productId, result.Receipt,
+                                    result.TransactionId, source);
+                                SDKLogger.Warning(Tag,
+                                    $"Validation failed (retryable) for {productId}: {validation.ErrorMessage}. " +
+                                    "Purchase saved for retry on next launch.");
+                                CompletePurchaseSuccess(result, source, skipTracking: true);
                                 OnPurchaseCompleted?.Invoke(result);
                                 onComplete?.Invoke(result);
                             } else {
@@ -190,8 +194,8 @@ namespace ArcherStudio.SDK.IAP {
                         return; // Wait for async validation callback
                     }
 
-                    // No validation configured — grant immediately
-                    CompletePurchaseSuccess(result, source);
+                    // No server validation — grant immediately, skip tracking (fail-safe)
+                    CompletePurchaseSuccess(result, source, skipTracking: true);
                 } else {
                     SDKLogger.Warning(Tag,
                         $"Purchase failed: {productId} - {result.ErrorMessage}");
@@ -260,23 +264,73 @@ namespace ArcherStudio.SDK.IAP {
             #endif
         }
 
+        // ─── Pending Purchase Recovery ───
+
+        private void RetryPendingPurchases() {
+            var pending = _pendingStore.GetAll();
+            SDKLogger.Info(Tag, $"Retrying {pending.Count} pending purchase(s)...");
+
+            foreach (var p in pending) {
+                SDKLogger.Info(Tag, $"Retrying pending: {p.productId} (txn: {p.transactionId}, attempt #{p.retryCount + 1})");
+
+                _receiptValidator.Validate(p.receipt, p.productId, validation => {
+                    if (validation.IsValid) {
+                        _pendingStore.Remove(p.transactionId);
+                        var recovered = PurchaseResult.Succeeded(p.productId, p.transactionId, p.receipt);
+                        CompletePurchaseSuccess(recovered, p.source, validation.IsTestPurchase);
+                        SDKLogger.Info(Tag, $"Pending purchase recovered: {p.productId}");
+                        OnPurchaseCompleted?.Invoke(recovered);
+                    } else if (validation.IsRetryable) {
+                        _pendingStore.IncrementRetry(p.transactionId);
+                        SDKLogger.Warning(Tag,
+                            $"Pending retry still failing for {p.productId}: {validation.ErrorMessage}. " +
+                            "Will retry next launch.");
+                    } else {
+                        // Server says receipt is genuinely invalid — remove from pending
+                        _pendingStore.Remove(p.transactionId);
+                        SDKLogger.Warning(Tag,
+                            $"Pending purchase permanently rejected: {p.productId} — {validation.ErrorMessage}");
+                    }
+                });
+            }
+        }
+
         // ─── Internal: Purchase completion ───
 
         /// <summary>
         /// Finalize a successful purchase: track revenue and publish event.
         /// Called after server validation passes (or immediately if validation is disabled).
         /// </summary>
-        private void CompletePurchaseSuccess(PurchaseResult result, string source) {
-            // Track IAP revenue through all providers
-            // Firebase: logs "in_app_purchase" event
-            // Adjust: verifies receipt + tracks revenue internally
-            TrackIAPRevenue(result, source);
+        private void CompletePurchaseSuccess(PurchaseResult result, string source,
+            bool isTestPurchase = false, bool skipTracking = false) {
+            #if PRODUCTION
+            if (!isTestPurchase && !skipTracking) {
+                TrackIAPRevenueEvent(result, source);
+                TrackIAPRevenue(result, source);
+            } else {
+                SDKLogger.Info(Tag, $"Revenue tracking skipped for {result.ProductId}" +
+                    (isTestPurchase ? " (test purchase)" : " (no server validation)"));
+            }
+            #endif
 
-            // Publish SDK event
             SDKEventBus.Publish(new PurchaseCompletedEvent(result));
         }
 
         // ─── IAP Revenue Tracking ───
+
+        private void TrackIAPRevenueEvent(PurchaseResult result, string source) {
+            var trackingManager = TrackingManager.Instance;
+            if (trackingManager == null) return;
+
+            var productInfo = _provider?.GetProduct(result.ProductId);
+            double revenue = productInfo.HasValue ? (double)productInfo.Value.PriceDecimal : 0;
+            int revenueMicro = (int)(revenue * 1_000_000);
+            string currency = productInfo.HasValue ? productInfo.Value.CurrencyCode ?? "USD" : "USD";
+
+            trackingManager.Track(new IapRevenueEvent(
+                result.ProductId, revenueMicro, currency, revenueMicro,
+                "success", null, null, source));
+        }
 
         /// <summary>
         /// Track IAP revenue through all providers (one call).
