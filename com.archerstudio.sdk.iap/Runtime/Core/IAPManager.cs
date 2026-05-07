@@ -252,6 +252,16 @@ namespace ArcherStudio.SDK.IAP {
         }
 
         /// <summary>
+        /// Fetch the latest subscription product info from the store.
+        /// Should be called to refresh subscription status.
+        /// </summary>
+        /// <param name="onComplete"></param>
+        public void FetchSubscriptionProduct(Action<bool> onComplete = null)
+        {
+            _provider?.FetchSubscriptionProduct(onComplete);
+        }
+
+        /// <summary>
         /// Opens the platform's subscription management page so the user can cancel or manage.
         /// </summary>
         public void OpenSubscriptionManagement() {

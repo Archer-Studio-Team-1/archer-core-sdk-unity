@@ -40,6 +40,7 @@ namespace ArcherStudio.SDK.IAP {
 
         private StoreController _controller;
         private Action<PurchaseResult> _purchaseCallback;
+        private Action<bool> _fetchSubscriptionComplete;
         private bool _initialized;
         private bool _connected;
         private bool _fetchCompleted; // True when products fetched or all retries exhausted
@@ -228,6 +229,39 @@ namespace ArcherStudio.SDK.IAP {
                 cancellationDate: null,
                 remainingTime: null,
                 subscriptionPeriod: null);
+        }
+
+        /// <summary>
+        /// Fetches subscription products and updates the active subscription cache.
+        /// </summary>
+        /// <param name="onComplete"></param>
+        public void FetchSubscriptionProduct(Action<bool> onComplete)
+        {
+            if (!_initialized || _controller == null)
+            {
+                SDKLogger.Debug(Tag, "FetchSubscriptionProduct: not initialized or controller null");
+                onComplete?.Invoke(false);
+                return;
+            }
+
+            _fetchSubscriptionComplete = onComplete;
+
+            var definitions = new List<ProductDefinition>();
+            foreach (var product in _config.Products)
+            {
+                if (product == null || product.Type != ProductType.Subscription) continue;
+                var type = MapProductType(product.Type);
+                var storeSpecificId = product.StoreSpecificId;
+                definitions.Add(new ProductDefinition(product.ProductId, storeSpecificId, type));
+            }
+
+            SDKLogger.Info(Tag, $"Fetching {definitions.Count} products");
+
+            LogProductDefinitions(definitions);
+
+            // IAP v5: Use FetchProductsWithNoRetries for manual retry control.
+            // FetchProducts(defs) uses built-in retry which would conflict with ours.
+            _controller.FetchProductsWithNoRetries(definitions);
         }
 
         public void Dispose() {
@@ -632,12 +666,18 @@ namespace ArcherStudio.SDK.IAP {
 
             if (pendingOrders != null) {
                 foreach (var order in pendingOrders) {
+                    SDKLogger.Info(Tag,
+                        $"Processing pending order for subscription cache: " +
+                        $"{JsonUtility.ToJson(order.Info)} ");
                     TryAddSubscription(order.CartOrdered.Items());
                 }
             }
 
             if (confirmedOrders != null) {
                 foreach (var order in confirmedOrders) {
+                    SDKLogger.Info(Tag,
+                        $"Processing confirmed order for subscription cache: " +
+                        $"{JsonUtility.ToJson(order.Info)} ");
                     TryAddSubscription(order.CartOrdered.Items());
                 }
             }
@@ -646,6 +686,8 @@ namespace ArcherStudio.SDK.IAP {
                 SDKLogger.Info(Tag,
                     $"Active subscriptions: [{string.Join(", ", _activeSubscriptions)}]");
             }
+
+            _fetchSubscriptionComplete?.Invoke(true);
         }
 
         private void TryAddSubscription(IReadOnlyList<CartItem> items) {

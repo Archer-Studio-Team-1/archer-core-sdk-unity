@@ -14,6 +14,7 @@ namespace ArcherStudio.SDK.IAP {
         IReadOnlyList<ProductInfo> GetProducts();
         ProductInfo? GetProduct(string productId);
         SubscriptionInfo? GetSubscriptionInfo(string productId);
+        void FetchSubscriptionProduct(Action<bool> onComplete);
         bool IsInitialized { get; }
 
         /// <summary>
