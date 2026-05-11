@@ -559,9 +559,18 @@ namespace ArcherStudio.SDK.IAP {
 
             SDKLogger.Info(Tag, $"Purchase pending: {productId} (txn: {info.TransactionID})");
 
-            // Track new subscription purchase immediately (before next FetchPurchases)
+            // Track new subscription purchase immediately (before next FetchPurchases).
+            // Fire OnSubscriptionStateChanged when this is a *new* activation so UI / game
+            // listeners can react without waiting for the next FetchPurchases cycle.
+            bool firedActivation = false;
             if (product.definition.type == UnityEngine.Purchasing.ProductType.Subscription) {
-                _activeSubscriptions.Add(productId);
+                if (_activeSubscriptions.Add(productId)) {
+                    firedActivation = true;
+                }
+                // Make the receipt available for token caching (server status queries)
+                if (!string.IsNullOrEmpty(info?.TransactionID) || !string.IsNullOrEmpty(info?.Receipt)) {
+                    OnSubscriptionOrderObserved?.Invoke(productId, info?.TransactionID, info?.Receipt);
+                }
             }
 
             // Build result while receipt is still available (v5: receipt is only on PendingOrder)
@@ -569,6 +578,12 @@ namespace ArcherStudio.SDK.IAP {
 
             _purchaseCallback?.Invoke(result);
             _purchaseCallback = null;
+
+            // Fire activation event AFTER the purchase callback so listeners that subscribe
+            // to OnSubscriptionStateChanged see the post-purchase state.
+            if (firedActivation) {
+                OnSubscriptionStateChanged?.Invoke(productId, true);
+            }
 
             // Confirm the pending order to finalize the transaction
             _controller.ConfirmPurchase(pendingOrder);
