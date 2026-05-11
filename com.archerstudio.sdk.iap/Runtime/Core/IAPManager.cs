@@ -493,25 +493,6 @@ namespace ArcherStudio.SDK.IAP {
                 result.TransactionId ?? "", result.Receipt ?? "", source);
         }
 
-        /// <summary>
-        /// Map PurchaseFailureReason to error code string for tracking.
-        /// Uses BillingResponseCode names where 1:1 match exists (USER_CANCELED, ITEM_UNAVAILABLE, etc).
-        /// Uses descriptive names for Unity-specific reasons that have no BillingResponseCode equivalent.
-        /// Ref: https://developer.android.com/reference/com/android/billingclient/api/BillingClient.BillingResponseCode
-        /// </summary>
-        private static string MapToBillingResponseCode(PurchaseFailureReason reason) {
-            switch (reason) {
-                case PurchaseFailureReason.UserCancelled: return "USER_CANCELED";
-                case PurchaseFailureReason.PurchasingUnavailable: return "BILLING_UNAVAILABLE";
-                case PurchaseFailureReason.ProductUnavailable: return "ITEM_UNAVAILABLE";
-                case PurchaseFailureReason.DuplicateTransaction: return "ITEM_ALREADY_OWNED";
-                case PurchaseFailureReason.PaymentDeclined: return "PAYMENT_DECLINED";
-                case PurchaseFailureReason.ExistingPurchasePending: return "EXISTING_PURCHASE_PENDING";
-                case PurchaseFailureReason.SignatureInvalid: return "SIGNATURE_INVALID";
-                default: return "UNKNOWN";
-            }
-        }
-
         // ─── Internal ───
 
         private IIAPProvider CreateProvider() {

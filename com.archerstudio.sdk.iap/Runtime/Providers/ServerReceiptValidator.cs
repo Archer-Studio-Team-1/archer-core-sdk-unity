@@ -275,6 +275,7 @@ namespace ArcherStudio.SDK.IAP {
             var subscriptionUrl = _serverUrl.Replace("validatePurchase", "validateSubscription");
 
             var payload = new SubscriptionQueryRequest {
+                productId = productId,
                 #if UNITY_ANDROID
                 platform = "google",
                 purchaseToken = purchaseToken,

@@ -171,6 +171,13 @@ namespace ArcherStudio.SDK.IAP {
         public System.DateTime? ExpirationDate { get; }
         public System.DateTime? PurchaseDate { get; }
         public System.DateTime? CancellationDate { get; }
+
+        /// <summary>
+        /// Time remaining until ExpirationDate, computed at the moment GetSubscriptionInfo()
+        /// was called (point-in-time snapshot). Clamped to zero — never negative.
+        /// Re-call GetSubscriptionInfo() for a fresh value; do not cache the struct and
+        /// rely on this field across long intervals.
+        /// </summary>
         public System.TimeSpan? RemainingTime { get; }
 
         /// <summary>ISO 8601 period string, e.g. "P1W" (7 days), "P1M" (1 month).</summary>

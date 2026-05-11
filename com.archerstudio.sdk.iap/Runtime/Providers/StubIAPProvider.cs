@@ -45,6 +45,7 @@ namespace ArcherStudio.SDK.IAP {
 
         public void Dispose() {
             IsInitialized = false;
+            OnSubscriptionStateChanged = null;
         }
     }
 }
