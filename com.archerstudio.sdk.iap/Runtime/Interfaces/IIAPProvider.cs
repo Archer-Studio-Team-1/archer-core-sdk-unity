@@ -28,5 +28,14 @@ namespace ArcherStudio.SDK.IAP {
         /// Parameters: productId, isNowActive.
         /// </summary>
         event Action<string, bool> OnSubscriptionStateChanged;
+
+        /// <summary>
+        /// Fired whenever a subscription order is observed (new purchase, restore, or
+        /// FetchPurchases). Carries the raw receipt so the manager can extract purchase
+        /// tokens for server-side status queries. Receipt may be empty for confirmed orders
+        /// on some platforms — caller should handle that.
+        /// Parameters: productId, transactionId, receipt.
+        /// </summary>
+        event Action<string, string, string> OnSubscriptionOrderObserved;
     }
 }

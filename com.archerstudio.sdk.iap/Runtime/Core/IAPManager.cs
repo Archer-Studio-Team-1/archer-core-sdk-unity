@@ -103,6 +103,7 @@ namespace ArcherStudio.SDK.IAP {
             // Step 5: Create and initialize provider
             _provider = CreateProvider();
             _provider.OnSubscriptionStateChanged += OnProviderSubscriptionStateChanged;
+            _provider.OnSubscriptionOrderObserved += OnProviderSubscriptionOrderObserved;
             SDKLogger.Info(Tag,
                 $"Initializing IAP provider ({_provider.GetType().Name}) " +
                 $"with {_config.Products.Count} products...");
@@ -155,6 +156,7 @@ namespace ArcherStudio.SDK.IAP {
         public void Dispose() {
             if (_provider != null) {
                 _provider.OnSubscriptionStateChanged -= OnProviderSubscriptionStateChanged;
+                _provider.OnSubscriptionOrderObserved -= OnProviderSubscriptionOrderObserved;
                 _provider.Dispose();
                 _provider = null;
             }
@@ -162,10 +164,60 @@ namespace ArcherStudio.SDK.IAP {
             State = ModuleState.Disposed;
         }
 
+        private void OnProviderSubscriptionOrderObserved(string productId, string transactionId, string receipt) {
+            // Cache the token so QuerySubscriptionStatus can call the server even for
+            // subscriptions restored from a previous session (where the new-purchase
+            // CompletePurchaseSuccess path never runs).
+            string purchaseToken = null;
+            try {
+                #if UNITY_ANDROID
+                if (!string.IsNullOrEmpty(receipt)) {
+                    var outer = JsonUtility.FromJson<GooglePlayReceiptWrapper>(receipt);
+                    if (outer != null && !string.IsNullOrEmpty(outer.Payload)) {
+                        var gp = JsonUtility.FromJson<GooglePlayPayloadWrapper>(outer.Payload);
+                        if (gp != null && !string.IsNullOrEmpty(gp.json)) {
+                            var data = JsonUtility.FromJson<GooglePlayPurchaseDataWrapper>(gp.json);
+                            purchaseToken = data?.purchaseToken;
+                        }
+                    }
+                }
+                #endif
+            } catch (Exception e) {
+                SDKLogger.Warning(Tag, $"Failed to parse receipt for {productId}: {e.Message}");
+            }
+            CacheSubscriptionToken(productId, purchaseToken, transactionId);
+        }
+
         private void OnProviderSubscriptionStateChanged(string productId, bool isActive) {
             SDKLogger.Info(Tag, $"Subscription state changed: {productId} → {(isActive ? "active" : "inactive")}");
             OnSubscriptionStateChanged?.Invoke(productId, isActive);
             SDKEventBus.Publish(new SubscriptionStateChangedEvent(productId, !isActive, isActive));
+        }
+
+        /// <summary>
+        /// Refresh server-side status for all currently-known subscription products.
+        /// Call this after IsSubscriptionStateReady becomes true to avoid trusting a stale
+        /// store cache that still contains expired orders. Safe to call repeatedly.
+        /// </summary>
+        public void RefreshAllSubscriptionStatuses() {
+            if (_receiptValidator == null || !_serverValidationEnabled) return;
+            if (_subscriptionTokens.Count == 0) return;
+
+            foreach (var entry in _subscriptionTokens) {
+                var pid = entry.Key;
+                QuerySubscriptionStatus(pid, result => {
+                    if (result.Status == SubscriptionStatus.Unknown) return;
+                    // If the server flipped the active state vs what the store cache reports,
+                    // notify listeners so they can react (e.g. revoke benefits).
+                    var info = GetSubscriptionInfo(pid);
+                    if (info.HasValue) {
+                        SDKLogger.Info(Tag,
+                            $"Refreshed {pid}: status={result.Status}, expires={result.ExpirationDate}, " +
+                            $"isSubscribed={info.Value.IsSubscribed}");
+                        OnSubscriptionStateChanged?.Invoke(pid, info.Value.IsSubscribed);
+                    }
+                });
+            }
         }
 
         // ─── Public API ───
@@ -260,33 +312,49 @@ namespace ArcherStudio.SDK.IAP {
 
         /// <summary>
         /// Get subscription status for a subscription product.
-        /// Merges store cache (active/inactive) with server-side details (expiry, status)
-        /// if available. Returns null if product is not a subscription or IAP not ready.
+        /// When server-side data is cached (via QuerySubscriptionStatus) the server is the
+        /// source of truth — its ExpirationDate / Status override the local store cache,
+        /// which can stale-report a subscription as still active after it has expired or
+        /// been refunded. Falls back to the store cache only when no server data exists.
+        /// Returns null if product is not a subscription or IAP not ready.
         /// </summary>
         public SubscriptionInfo? GetSubscriptionInfo(string productId) {
             if (State != ModuleState.Ready) return null;
             var storeInfo = _provider?.GetSubscriptionInfo(productId);
             if (!storeInfo.HasValue) return null;
 
-            // Enrich with server-side details if cached
-            if (_subscriptionDetails.TryGetValue(productId, out var serverData) && serverData.Success) {
+            // Server data present and not a failed query (Status != Unknown means we got an
+            // authoritative answer — even if response.valid was false for expired/cancelled).
+            if (_subscriptionDetails.TryGetValue(productId, out var serverData)
+                && serverData.Status != SubscriptionStatus.Unknown) {
+
+                // Authoritative active check: prefer ExpirationDate vs now (handles
+                // "cancelled but still inside paid period"); fall back to Status enum.
+                bool isActive;
+                if (serverData.ExpirationDate.HasValue) {
+                    isActive = serverData.ExpirationDate.Value > DateTime.UtcNow;
+                } else {
+                    isActive = serverData.Status == SubscriptionStatus.Active
+                            || serverData.Status == SubscriptionStatus.GracePeriod;
+                }
+
                 return new SubscriptionInfo(
                     storeInfo.Value.ProductId,
-                    storeInfo.Value.IsSubscribed,
-                    storeInfo.Value.IsExpired,
-                    serverData.Status == SubscriptionStatus.Cancelled,
-                    serverData.IsFreeTrial,
-                    storeInfo.Value.IsIntroductoryPricePeriod,
-                    serverData.IsAutoRenewing,
-                    serverData.ExpirationDate,
-                    serverData.PurchaseDate,
-                    serverData.CancellationDate,
-                    serverData.ExpirationDate.HasValue
+                    isSubscribed: isActive,
+                    isExpired: !isActive,
+                    isCancelled: serverData.Status == SubscriptionStatus.Cancelled,
+                    isFreeTrial: serverData.IsFreeTrial,
+                    isIntroductoryPricePeriod: storeInfo.Value.IsIntroductoryPricePeriod,
+                    isAutoRenewing: serverData.IsAutoRenewing,
+                    expirationDate: serverData.ExpirationDate,
+                    purchaseDate: serverData.PurchaseDate,
+                    cancellationDate: serverData.CancellationDate,
+                    remainingTime: serverData.ExpirationDate.HasValue
                         ? TimeSpan.FromTicks(Math.Max(0,
                             (serverData.ExpirationDate.Value - DateTime.UtcNow).Ticks))
                         : (TimeSpan?)null,
-                    storeInfo.Value.SubscriptionPeriod,
-                    serverData.Status);
+                    subscriptionPeriod: storeInfo.Value.SubscriptionPeriod,
+                    status: serverData.Status);
             }
 
             return storeInfo;

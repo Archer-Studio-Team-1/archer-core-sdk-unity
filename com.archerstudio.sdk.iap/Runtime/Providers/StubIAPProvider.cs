@@ -11,6 +11,7 @@ namespace ArcherStudio.SDK.IAP {
         public bool IsInitialized { get; private set; }
         public bool IsPurchasesFetchCompleted { get; private set; }
         public event Action<string, bool> OnSubscriptionStateChanged;
+        public event Action<string, string, string> OnSubscriptionOrderObserved;
 
         public void Initialize(IAPConfig config, Action<bool> onComplete) {
             IsInitialized = true;
@@ -46,6 +47,7 @@ namespace ArcherStudio.SDK.IAP {
         public void Dispose() {
             IsInitialized = false;
             OnSubscriptionStateChanged = null;
+            OnSubscriptionOrderObserved = null;
         }
     }
 }

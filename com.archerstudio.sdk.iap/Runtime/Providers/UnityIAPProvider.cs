@@ -57,6 +57,7 @@ namespace ArcherStudio.SDK.IAP {
         public bool IsInitialized => _initialized;
         public bool IsPurchasesFetchCompleted { get; private set; }
         public event Action<string, bool> OnSubscriptionStateChanged;
+        public event Action<string, string, string> OnSubscriptionOrderObserved;
 
         // ─── IIAPProvider ───
 
@@ -679,7 +680,8 @@ namespace ArcherStudio.SDK.IAP {
                     SDKLogger.Info(Tag,
                         $"Processing pending order for subscription cache: " +
                         $"{JsonUtility.ToJson(order.Info)} ");
-                    TryAddSubscription(order.CartOrdered.Items());
+                    TryAddSubscription(order.CartOrdered.Items(),
+                        order.Info?.TransactionID, order.Info?.Receipt);
                 }
             }
 
@@ -688,7 +690,8 @@ namespace ArcherStudio.SDK.IAP {
                     SDKLogger.Info(Tag,
                         $"Processing confirmed order for subscription cache: " +
                         $"{JsonUtility.ToJson(order.Info)} ");
-                    TryAddSubscription(order.CartOrdered.Items());
+                    TryAddSubscription(order.CartOrdered.Items(),
+                        order.Info?.TransactionID, order.Info?.Receipt);
                 }
             }
 
@@ -718,11 +721,21 @@ namespace ArcherStudio.SDK.IAP {
             cb?.Invoke(true);
         }
 
-        private void TryAddSubscription(IReadOnlyList<CartItem> items) {
+        private void TryAddSubscription(IReadOnlyList<CartItem> items,
+            string transactionId = null, string receipt = null) {
             if (items == null || items.Count == 0) return;
             var product = items[0].Product;
             if (product.definition.type == UnityEngine.Purchasing.ProductType.Subscription) {
-                _activeSubscriptions.Add(product.definition.id);
+                var productId = product.definition.id;
+                _activeSubscriptions.Add(productId);
+
+                // Expose receipt + transaction id so the manager can extract a purchase
+                // token for server-side subscription status queries — necessary because
+                // confirmed orders re-fetched on app launch do not flow through
+                // OnPurchasePending → CompletePurchaseSuccess path that caches tokens.
+                if (!string.IsNullOrEmpty(transactionId) || !string.IsNullOrEmpty(receipt)) {
+                    OnSubscriptionOrderObserved?.Invoke(productId, transactionId, receipt);
+                }
             }
         }
 
