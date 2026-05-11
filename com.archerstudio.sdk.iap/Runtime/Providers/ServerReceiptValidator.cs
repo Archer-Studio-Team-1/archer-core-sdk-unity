@@ -409,6 +409,7 @@ namespace ArcherStudio.SDK.IAP {
         [Serializable]
         private class SubscriptionQueryRequest {
             public string platform;
+            public string productId;
             public string purchaseToken;
             public string transactionId;
             public string packageName;
