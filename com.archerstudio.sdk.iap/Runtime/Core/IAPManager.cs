@@ -38,6 +38,13 @@ namespace ArcherStudio.SDK.IAP {
         private readonly Dictionary<string, (string purchaseToken, string transactionId)> _subscriptionTokens
             = new Dictionary<string, (string, string)>();
 
+        // Per-product expiry-check timer generation. We don't track Coroutine handles
+        // because IAPCoroutineRunner.DelayedCall doesn't return one; instead we bump
+        // the generation when (re)scheduling and the timer closure checks it before
+        // doing work. Old scheduled fires become no-ops.
+        private readonly Dictionary<string, int> _expiryTimerGenerations
+            = new Dictionary<string, int>();
+
         public event Action<PurchaseResult> OnPurchaseCompleted;
 
         /// <summary>
@@ -422,11 +429,58 @@ namespace ArcherStudio.SDK.IAP {
                         $"Subscription status for {productId} (canonical={canonicalId}): " +
                         $"valid={result.Success}, status={result.Status}, " +
                         $"expires={result.ExpirationDate}, autoRenew={result.IsAutoRenewing}");
+
+                    // Schedule a self-fired refresh just past ExpirationDate so the SDK
+                    // detects expiry mid-session without relying on app focus events.
+                    if (result.ExpirationDate.HasValue) {
+                        ScheduleExpiryCheck(canonicalId, result.ExpirationDate.Value);
+                    }
                 } else {
                     SDKLogger.Warning(Tag,
                         $"Subscription status query failed for {productId}: {result.ErrorMessage}");
                 }
                 onComplete?.Invoke(result);
+            });
+        }
+
+        /// <summary>
+        /// Schedules a one-shot expiry check for the given subscription. The next-up timer
+        /// for the same productId is invalidated via generation bump — useful for renewals
+        /// where a new ExpirationDate arrives before the previous timer fires (especially
+        /// relevant for license-tester accounts with compressed 5-minute durations).
+        /// </summary>
+        private void ScheduleExpiryCheck(string canonicalProductId, DateTime expirationUtc) {
+            // 30-second grace so we query AFTER the store-side expiry truly settles.
+            var delay = (float)(expirationUtc - DateTime.UtcNow).TotalSeconds + 30f;
+            if (delay <= 0f) delay = 30f; // already past — still check once
+
+            // Bump the generation for this product so any pending older fire is a no-op.
+            _expiryTimerGenerations.TryGetValue(canonicalProductId, out var prevGen);
+            var generation = prevGen + 1;
+            _expiryTimerGenerations[canonicalProductId] = generation;
+
+            SDKLogger.Info(Tag,
+                $"[Timer] Scheduling expiry check for {canonicalProductId} in {delay:F1}s " +
+                $"(expirationUtc={expirationUtc:O}, gen={generation})");
+
+            IAPCoroutineRunner.DelayedCall(delay, () => OnExpiryTimerFired(canonicalProductId, generation));
+        }
+
+        private void OnExpiryTimerFired(string canonicalProductId, int generation) {
+            if (State != ModuleState.Ready || _provider == null) return;
+            // Stale timer for an older schedule (renewal happened, dispose ran, etc.)
+            if (!_expiryTimerGenerations.TryGetValue(canonicalProductId, out var current)
+                || current != generation) {
+                SDKLogger.Debug(Tag,
+                    $"[Timer] Stale expiry fire for {canonicalProductId} (gen {generation} ≠ {current}) — ignored.");
+                return;
+            }
+
+            SDKLogger.Info(Tag, $"[Timer] Expiry timer fired for {canonicalProductId} — refreshing.");
+            FetchSubscriptionProduct(success => {
+                // After the refresh, re-query server status. If still active (auto-renewed),
+                // the new ExpirationDate will reschedule the timer naturally.
+                QuerySubscriptionStatus(canonicalProductId, null);
             });
         }
 
