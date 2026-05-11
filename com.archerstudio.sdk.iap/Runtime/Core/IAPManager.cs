@@ -29,7 +29,21 @@ namespace ArcherStudio.SDK.IAP {
         private bool _serverValidationEnabled;
         private PendingPurchaseStore _pendingStore;
 
+        // Cached server-side subscription details (productId → result)
+        private readonly Dictionary<string, SubscriptionStatusResult> _subscriptionDetails
+            = new Dictionary<string, SubscriptionStatusResult>();
+
+        // Cached purchase tokens for subscription queries
+        private readonly Dictionary<string, (string purchaseToken, string transactionId)> _subscriptionTokens
+            = new Dictionary<string, (string, string)>();
+
         public event Action<PurchaseResult> OnPurchaseCompleted;
+
+        /// <summary>
+        /// Fired when a subscription's active state changes (expired, renewed, cancelled, restored).
+        /// Parameters: productId, isNowActive.
+        /// </summary>
+        public event Action<string, bool> OnSubscriptionStateChanged;
 
         /// <summary>
         /// True after FetchPurchases has completed (success or failure).
@@ -88,6 +102,7 @@ namespace ArcherStudio.SDK.IAP {
 
             // Step 5: Create and initialize provider
             _provider = CreateProvider();
+            _provider.OnSubscriptionStateChanged += OnProviderSubscriptionStateChanged;
             SDKLogger.Info(Tag,
                 $"Initializing IAP provider ({_provider.GetType().Name}) " +
                 $"with {_config.Products.Count} products...");
@@ -138,10 +153,19 @@ namespace ArcherStudio.SDK.IAP {
         }
 
         public void Dispose() {
-            _provider?.Dispose();
-            _provider = null;
+            if (_provider != null) {
+                _provider.OnSubscriptionStateChanged -= OnProviderSubscriptionStateChanged;
+                _provider.Dispose();
+                _provider = null;
+            }
             Instance = null;
             State = ModuleState.Disposed;
+        }
+
+        private void OnProviderSubscriptionStateChanged(string productId, bool isActive) {
+            SDKLogger.Info(Tag, $"Subscription state changed: {productId} → {(isActive ? "active" : "inactive")}");
+            OnSubscriptionStateChanged?.Invoke(productId, isActive);
+            SDKEventBus.Publish(new SubscriptionStateChangedEvent(productId, !isActive, isActive));
         }
 
         // ─── Public API ───
@@ -236,11 +260,36 @@ namespace ArcherStudio.SDK.IAP {
 
         /// <summary>
         /// Get subscription status for a subscription product.
-        /// Returns null if product is not a subscription, has no receipt, or IAP not ready.
+        /// Merges store cache (active/inactive) with server-side details (expiry, status)
+        /// if available. Returns null if product is not a subscription or IAP not ready.
         /// </summary>
         public SubscriptionInfo? GetSubscriptionInfo(string productId) {
             if (State != ModuleState.Ready) return null;
-            return _provider?.GetSubscriptionInfo(productId);
+            var storeInfo = _provider?.GetSubscriptionInfo(productId);
+            if (!storeInfo.HasValue) return null;
+
+            // Enrich with server-side details if cached
+            if (_subscriptionDetails.TryGetValue(productId, out var serverData) && serverData.Success) {
+                return new SubscriptionInfo(
+                    storeInfo.Value.ProductId,
+                    storeInfo.Value.IsSubscribed,
+                    storeInfo.Value.IsExpired,
+                    serverData.Status == SubscriptionStatus.Cancelled,
+                    serverData.IsFreeTrial,
+                    storeInfo.Value.IsIntroductoryPricePeriod,
+                    serverData.IsAutoRenewing,
+                    serverData.ExpirationDate,
+                    serverData.PurchaseDate,
+                    serverData.CancellationDate,
+                    serverData.ExpirationDate.HasValue
+                        ? TimeSpan.FromTicks(Math.Max(0,
+                            (serverData.ExpirationDate.Value - DateTime.UtcNow).Ticks))
+                        : (TimeSpan?)null,
+                    storeInfo.Value.SubscriptionPeriod,
+                    serverData.Status);
+            }
+
+            return storeInfo;
         }
 
         /// <summary>
@@ -249,6 +298,49 @@ namespace ArcherStudio.SDK.IAP {
         public bool IsSubscribed(string productId) {
             var info = GetSubscriptionInfo(productId);
             return info.HasValue && info.Value.IsSubscribed;
+        }
+
+        /// <summary>
+        /// Query the server for detailed subscription status (expiry, grace period, etc.).
+        /// Results are cached and merged into subsequent GetSubscriptionInfo() calls.
+        /// </summary>
+        public void QuerySubscriptionStatus(string productId, Action<SubscriptionStatusResult> onComplete = null) {
+            if (_receiptValidator == null || !_serverValidationEnabled) {
+                SDKLogger.Warning(Tag, "QuerySubscriptionStatus: server validation not enabled.");
+                onComplete?.Invoke(SubscriptionStatusResult.Failed("Server validation not enabled."));
+                return;
+            }
+
+            if (!_subscriptionTokens.TryGetValue(productId, out var tokens) ||
+                (string.IsNullOrEmpty(tokens.purchaseToken) && string.IsNullOrEmpty(tokens.transactionId))) {
+                SDKLogger.Warning(Tag, $"QuerySubscriptionStatus: no purchase token cached for {productId}.");
+                onComplete?.Invoke(SubscriptionStatusResult.Failed("No purchase token available."));
+                return;
+            }
+
+            _receiptValidator.QuerySubscriptionStatus(
+                tokens.purchaseToken, tokens.transactionId, productId, result => {
+                if (result.Success) {
+                    _subscriptionDetails[productId] = result;
+                    SDKLogger.Info(Tag,
+                        $"Subscription status for {productId}: {result.Status}, " +
+                        $"expires={result.ExpirationDate}, autoRenew={result.IsAutoRenewing}");
+                } else {
+                    SDKLogger.Warning(Tag,
+                        $"Subscription status query failed for {productId}: {result.ErrorMessage}");
+                }
+                onComplete?.Invoke(result);
+            });
+        }
+
+        /// <summary>
+        /// Cache a purchase token/transactionId for a subscription product.
+        /// Used internally for subsequent QuerySubscriptionStatus calls.
+        /// </summary>
+        public void CacheSubscriptionToken(string productId, string purchaseToken, string transactionId) {
+            if (!string.IsNullOrEmpty(productId)) {
+                _subscriptionTokens[productId] = (purchaseToken, transactionId);
+            }
         }
 
         /// <summary>
@@ -313,6 +405,13 @@ namespace ArcherStudio.SDK.IAP {
         /// </summary>
         private void CompletePurchaseSuccess(PurchaseResult result, string source,
             bool isTestPurchase = false, bool skipTracking = false) {
+
+            // Cache purchase token for subscription status queries
+            var productInfo = _provider?.GetProduct(result.ProductId);
+            if (productInfo.HasValue && productInfo.Value.Type == ProductType.Subscription) {
+                CacheSubscriptionTokenFromReceipt(result);
+            }
+
             #if PRODUCTION
             if (!isTestPurchase && !skipTracking) {
                 TrackIAPRevenueEvent(result, source);
@@ -325,6 +424,33 @@ namespace ArcherStudio.SDK.IAP {
 
             SDKEventBus.Publish(new PurchaseCompletedEvent(result));
         }
+
+        private void CacheSubscriptionTokenFromReceipt(PurchaseResult result) {
+            if (string.IsNullOrEmpty(result.Receipt)) return;
+            try {
+                string purchaseToken = null;
+                string transactionId = result.TransactionId;
+
+                #if UNITY_ANDROID
+                var outerReceipt = JsonUtility.FromJson<GooglePlayReceiptWrapper>(result.Receipt);
+                if (outerReceipt != null && !string.IsNullOrEmpty(outerReceipt.Payload)) {
+                    var gpPayload = JsonUtility.FromJson<GooglePlayPayloadWrapper>(outerReceipt.Payload);
+                    if (gpPayload != null && !string.IsNullOrEmpty(gpPayload.json)) {
+                        var purchaseData = JsonUtility.FromJson<GooglePlayPurchaseDataWrapper>(gpPayload.json);
+                        purchaseToken = purchaseData?.purchaseToken;
+                    }
+                }
+                #endif
+
+                CacheSubscriptionToken(result.ProductId, purchaseToken, transactionId);
+            } catch (Exception e) {
+                SDKLogger.Warning(Tag, $"Failed to cache subscription token: {e.Message}");
+            }
+        }
+
+        [Serializable] private class GooglePlayReceiptWrapper { public string Payload; }
+        [Serializable] private class GooglePlayPayloadWrapper { public string json; }
+        [Serializable] private class GooglePlayPurchaseDataWrapper { public string purchaseToken; }
 
         // ─── IAP Revenue Tracking ───
 

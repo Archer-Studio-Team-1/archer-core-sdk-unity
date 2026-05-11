@@ -63,6 +63,27 @@ namespace ArcherStudio.SDK.IAP {
             action?.Invoke();
         }
 
+        /// <summary>
+        /// Auto-refresh subscription state when app returns to foreground.
+        /// Debounced to avoid rapid repeated calls.
+        /// </summary>
+        private float _lastFocusRefreshTime;
+        private const float FocusRefreshCooldown = 5f;
+
+        private void OnApplicationFocus(bool hasFocus) {
+            if (!hasFocus) return;
+            if (_applicationIsQuitting) return;
+            if (Time.realtimeSinceStartup - _lastFocusRefreshTime < FocusRefreshCooldown) return;
+            _lastFocusRefreshTime = Time.realtimeSinceStartup;
+
+            var manager = IAPManager.Instance;
+            if (manager == null || manager.State != Core.ModuleState.Ready) return;
+            if (!manager.IsSubscriptionStateReady) return;
+
+            Core.SDKLogger.Debug("IAP", "App resumed — refreshing subscription state from store.");
+            manager.FetchSubscriptionProduct(null);
+        }
+
         private void OnApplicationQuit() {
             _applicationIsQuitting = true;
         }

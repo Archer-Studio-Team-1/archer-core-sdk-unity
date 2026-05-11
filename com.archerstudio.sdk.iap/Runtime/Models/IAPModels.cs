@@ -1,4 +1,63 @@
+using ArcherStudio.SDK.Core;
+
 namespace ArcherStudio.SDK.IAP {
+
+    public enum SubscriptionStatus {
+        Unknown,
+        Active,
+        Cancelled,
+        GracePeriod,
+        AccountHold,
+        Paused,
+        Expired
+    }
+
+    public readonly struct SubscriptionStateChangedEvent : ISDKEvent {
+        public string ProductId { get; }
+        public bool WasActive { get; }
+        public bool IsActive { get; }
+        public SubscriptionStatus Status { get; }
+
+        public SubscriptionStateChangedEvent(string productId, bool wasActive, bool isActive,
+            SubscriptionStatus status = SubscriptionStatus.Unknown) {
+            ProductId = productId;
+            WasActive = wasActive;
+            IsActive = isActive;
+            Status = status;
+        }
+    }
+
+    /// <summary>
+    /// Server-side subscription status query result.
+    /// </summary>
+    public readonly struct SubscriptionStatusResult {
+        public bool Success { get; }
+        public SubscriptionStatus Status { get; }
+        public System.DateTime? ExpirationDate { get; }
+        public System.DateTime? PurchaseDate { get; }
+        public System.DateTime? CancellationDate { get; }
+        public bool IsAutoRenewing { get; }
+        public bool IsFreeTrial { get; }
+        public string ErrorMessage { get; }
+
+        public SubscriptionStatusResult(bool success, SubscriptionStatus status,
+            System.DateTime? expirationDate, System.DateTime? purchaseDate,
+            System.DateTime? cancellationDate, bool isAutoRenewing, bool isFreeTrial,
+            string errorMessage) {
+            Success = success;
+            Status = status;
+            ExpirationDate = expirationDate;
+            PurchaseDate = purchaseDate;
+            CancellationDate = cancellationDate;
+            IsAutoRenewing = isAutoRenewing;
+            IsFreeTrial = isFreeTrial;
+            ErrorMessage = errorMessage;
+        }
+
+        public static SubscriptionStatusResult Failed(string error) =>
+            new SubscriptionStatusResult(false, SubscriptionStatus.Unknown,
+                null, null, null, false, false, error);
+    }
 
     public enum ProductType {
         Consumable,
@@ -117,6 +176,9 @@ namespace ArcherStudio.SDK.IAP {
         /// <summary>ISO 8601 period string, e.g. "P1W" (7 days), "P1M" (1 month).</summary>
         public string SubscriptionPeriod { get; }
 
+        /// <summary>Detailed subscription status from server. Unknown if server data not available.</summary>
+        public SubscriptionStatus Status { get; }
+
         public SubscriptionInfo(
             string productId,
             bool isSubscribed,
@@ -129,7 +191,8 @@ namespace ArcherStudio.SDK.IAP {
             System.DateTime? purchaseDate,
             System.DateTime? cancellationDate,
             System.TimeSpan? remainingTime,
-            string subscriptionPeriod) {
+            string subscriptionPeriod,
+            SubscriptionStatus status = SubscriptionStatus.Unknown) {
             ProductId = productId;
             IsSubscribed = isSubscribed;
             IsExpired = isExpired;
@@ -142,6 +205,7 @@ namespace ArcherStudio.SDK.IAP {
             CancellationDate = cancellationDate;
             RemainingTime = remainingTime;
             SubscriptionPeriod = subscriptionPeriod;
+            Status = status;
         }
     }
 }

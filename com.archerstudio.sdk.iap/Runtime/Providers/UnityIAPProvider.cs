@@ -56,6 +56,7 @@ namespace ArcherStudio.SDK.IAP {
 
         public bool IsInitialized => _initialized;
         public bool IsPurchasesFetchCompleted { get; private set; }
+        public event Action<string, bool> OnSubscriptionStateChanged;
 
         // ─── IIAPProvider ───
 
@@ -228,40 +229,30 @@ namespace ArcherStudio.SDK.IAP {
                 purchaseDate: null,
                 cancellationDate: null,
                 remainingTime: null,
-                subscriptionPeriod: null);
+                subscriptionPeriod: null,
+                status: isActive ? SubscriptionStatus.Active : SubscriptionStatus.Expired);
         }
 
         /// <summary>
-        /// Fetches subscription products and updates the active subscription cache.
+        /// Re-fetches purchase/order state from the store to refresh the subscription cache.
+        /// Call this on app resume or when you need up-to-date subscription status.
         /// </summary>
-        /// <param name="onComplete"></param>
-        public void FetchSubscriptionProduct(Action<bool> onComplete)
-        {
-            if (!_initialized || _controller == null)
-            {
+        public void FetchSubscriptionProduct(Action<bool> onComplete) {
+            if (!_initialized || _controller == null) {
                 SDKLogger.Debug(Tag, "FetchSubscriptionProduct: not initialized or controller null");
                 onComplete?.Invoke(false);
                 return;
             }
 
-            _fetchSubscriptionComplete = onComplete;
-
-            var definitions = new List<ProductDefinition>();
-            foreach (var product in _config.Products)
-            {
-                if (product == null || product.Type != ProductType.Subscription) continue;
-                var type = MapProductType(product.Type);
-                var storeSpecificId = product.StoreSpecificId;
-                definitions.Add(new ProductDefinition(product.ProductId, storeSpecificId, type));
+            if (_fetchSubscriptionComplete != null) {
+                SDKLogger.Debug(Tag, "FetchSubscriptionProduct: already in progress, skipping.");
+                onComplete?.Invoke(false);
+                return;
             }
 
-            SDKLogger.Info(Tag, $"Fetching {definitions.Count} products");
-
-            LogProductDefinitions(definitions);
-
-            // IAP v5: Use FetchProductsWithNoRetries for manual retry control.
-            // FetchProducts(defs) uses built-in retry which would conflict with ours.
-            _controller.FetchProductsWithNoRetries(definitions);
+            _fetchSubscriptionComplete = onComplete;
+            SDKLogger.Info(Tag, "FetchSubscriptionProduct: refreshing purchase state from store...");
+            _controller.FetchPurchases();
         }
 
         public void Dispose() {
@@ -281,7 +272,8 @@ namespace ArcherStudio.SDK.IAP {
                 _controller.OnStoreDisconnected -= OnStoreDisconnected;
             }
 
-            IAPCoroutineRunner.CancelAll();
+            // Invalidate pending timeouts via generation; do NOT CancelAll (kills validation coroutines)
+            _fetchGeneration++;
             _controller = null;
         }
 
@@ -439,7 +431,8 @@ namespace ArcherStudio.SDK.IAP {
             if (_fetchCompleted || _disposed) return;
             _fetchCompleted = true;
 
-            IAPCoroutineRunner.CancelAll(); // Stop pending timeouts
+            // Invalidate pending timeouts via generation (no CancelAll — that kills validation coroutines)
+            _fetchGeneration++;
 
             SDKLogger.Info(Tag, $"Products fetched successfully. {products.Count} products available.");
             foreach (var product in products) {
@@ -529,6 +522,10 @@ namespace ArcherStudio.SDK.IAP {
             SDKLogger.Warning(Tag,
                 $"Fetch purchases failed: {failure.FailureReason} - {failure.Message}. " +
                 "Pending purchases may not be processed until next attempt.");
+
+            var cb = _fetchSubscriptionComplete;
+            _fetchSubscriptionComplete = null;
+            cb?.Invoke(false);
         }
 
         /// <summary>
@@ -642,14 +639,25 @@ namespace ArcherStudio.SDK.IAP {
                 $"Store disconnected: {failure.Message ?? "(unknown)"}. " +
                 $"Retryable: {failure.IsRetryable}");
 
-            // Only attempt reconnection if the failure is retryable
             if (failure.IsRetryable) {
                 SDKLogger.Info(Tag, "Attempting to reconnect...");
-                ConnectAndFetch();
+                ReconnectToStore();
             } else {
                 SDKLogger.Warning(Tag,
                     "Store disconnection is not retryable. " +
                     "IAP will be unavailable until app restart.");
+            }
+        }
+
+        private async void ReconnectToStore() {
+            if (_disposed || _controller == null) return;
+            try {
+                await _controller.Connect();
+                _connected = true;
+                SDKLogger.Info(Tag, "Store reconnected. Refreshing purchases...");
+                _controller.FetchPurchases();
+            } catch (Exception e) {
+                SDKLogger.Error(Tag, $"Store reconnection failed: {e.Message}");
             }
         }
 
@@ -662,6 +670,8 @@ namespace ArcherStudio.SDK.IAP {
         private void RefreshSubscriptionCache(
             IReadOnlyList<PendingOrder> pendingOrders,
             IReadOnlyList<Order> confirmedOrders) {
+
+            var previousSubs = new HashSet<string>(_activeSubscriptions);
             _activeSubscriptions.Clear();
 
             if (pendingOrders != null) {
@@ -687,7 +697,25 @@ namespace ArcherStudio.SDK.IAP {
                     $"Active subscriptions: [{string.Join(", ", _activeSubscriptions)}]");
             }
 
-            _fetchSubscriptionComplete?.Invoke(true);
+            // Detect state changes: was active → now inactive (expired/cancelled)
+            foreach (var prev in previousSubs) {
+                if (!_activeSubscriptions.Contains(prev)) {
+                    SDKLogger.Info(Tag, $"Subscription deactivated: {prev}");
+                    OnSubscriptionStateChanged?.Invoke(prev, false);
+                }
+            }
+
+            // Detect state changes: was inactive → now active (new purchase/renewed)
+            foreach (var current in _activeSubscriptions) {
+                if (!previousSubs.Contains(current)) {
+                    SDKLogger.Info(Tag, $"Subscription activated: {current}");
+                    OnSubscriptionStateChanged?.Invoke(current, true);
+                }
+            }
+
+            var cb = _fetchSubscriptionComplete;
+            _fetchSubscriptionComplete = null;
+            cb?.Invoke(true);
         }
 
         private void TryAddSubscription(IReadOnlyList<CartItem> items) {

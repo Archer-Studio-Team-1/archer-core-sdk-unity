@@ -262,6 +262,108 @@ namespace ArcherStudio.SDK.IAP {
         }
         #endif
 
+        // ─── Subscription Status Query ───
+
+        public void QuerySubscriptionStatus(string purchaseToken, string transactionId,
+            string productId, Action<SubscriptionStatusResult> onComplete) {
+
+            if (string.IsNullOrEmpty(_serverUrl)) {
+                onComplete?.Invoke(SubscriptionStatusResult.Failed("ValidationServerUrl is empty."));
+                return;
+            }
+
+            var subscriptionUrl = _serverUrl.Replace("validatePurchase", "validateSubscription");
+
+            var payload = new SubscriptionQueryRequest {
+                #if UNITY_ANDROID
+                platform = "google",
+                purchaseToken = purchaseToken,
+                packageName = Application.identifier,
+                #elif UNITY_IOS
+                platform = "apple",
+                transactionId = transactionId,
+                #else
+                platform = "unknown",
+                #endif
+            };
+
+            var json = JsonUtility.ToJson(payload);
+            IAPCoroutineRunner.Run(SendSubscriptionQuery(subscriptionUrl, json, productId, onComplete));
+        }
+
+        private System.Collections.IEnumerator SendSubscriptionQuery(
+            string url, string jsonPayload, string productId,
+            Action<SubscriptionStatusResult> onComplete) {
+
+            var request = new UnityWebRequest(url, "POST");
+            var bodyRaw = Encoding.UTF8.GetBytes(jsonPayload);
+            request.uploadHandler = new UploadHandlerRaw(bodyRaw);
+            request.downloadHandler = new DownloadHandlerBuffer();
+            request.SetRequestHeader("Content-Type", "application/json");
+            request.timeout = (int)_timeoutSeconds;
+
+            if (!string.IsNullOrEmpty(_apiKey)) {
+                request.SetRequestHeader("x-api-key", _apiKey);
+            }
+
+            yield return request.SendWebRequest();
+
+            if (request.result == UnityWebRequest.Result.Success && request.responseCode == 200) {
+                try {
+                    var response = JsonUtility.FromJson<SubscriptionQueryResponse>(request.downloadHandler.text);
+                    var status = MapSubscriptionStatus(response.status);
+
+                    System.DateTime? expirationDate = null;
+                    System.DateTime? purchaseDate = null;
+
+                    if (!string.IsNullOrEmpty(response.expirationDate)) {
+                        if (System.DateTime.TryParse(response.expirationDate, null,
+                                System.Globalization.DateTimeStyles.RoundtripKind, out var exp))
+                            expirationDate = exp;
+                    }
+
+                    if (!string.IsNullOrEmpty(response.purchaseDate)) {
+                        if (System.DateTime.TryParse(response.purchaseDate, null,
+                                System.Globalization.DateTimeStyles.RoundtripKind, out var pur))
+                            purchaseDate = pur;
+                    }
+
+                    onComplete?.Invoke(new SubscriptionStatusResult(
+                        response.valid,
+                        status,
+                        expirationDate,
+                        purchaseDate,
+                        null,
+                        response.autoRenewing,
+                        response.isFreeTrial,
+                        response.error));
+
+                } catch (System.Exception e) {
+                    SDKLogger.Error(Tag, $"Failed to parse subscription status: {e.Message}");
+                    onComplete?.Invoke(SubscriptionStatusResult.Failed($"Parse error: {e.Message}"));
+                }
+            } else {
+                SDKLogger.Warning(Tag,
+                    $"Subscription status query failed: {request.result} (HTTP {request.responseCode})");
+                onComplete?.Invoke(SubscriptionStatusResult.Failed(
+                    $"HTTP {request.responseCode}: {request.error}"));
+            }
+
+            request.Dispose();
+        }
+
+        private static SubscriptionStatus MapSubscriptionStatus(string status) {
+            switch (status) {
+                case "active": return SubscriptionStatus.Active;
+                case "cancelled": return SubscriptionStatus.Cancelled;
+                case "grace_period": return SubscriptionStatus.GracePeriod;
+                case "account_hold": return SubscriptionStatus.AccountHold;
+                case "paused": return SubscriptionStatus.Paused;
+                case "expired": return SubscriptionStatus.Expired;
+                default: return SubscriptionStatus.Unknown;
+            }
+        }
+
         // ─── JSON Models ───
 
         [Serializable]
@@ -301,6 +403,28 @@ namespace ArcherStudio.SDK.IAP {
             public string purchaseToken;
             public string packageName;
             public string orderId;
+        }
+
+        [Serializable]
+        private class SubscriptionQueryRequest {
+            public string platform;
+            public string purchaseToken;
+            public string transactionId;
+            public string packageName;
+        }
+
+        [Serializable]
+        private class SubscriptionQueryResponse {
+            public bool valid;
+            public string productId;
+            public string expirationDate;
+            public string purchaseDate;
+            public bool autoRenewing;
+            public bool cancelled;
+            public bool isFreeTrial;
+            public string status;
+            public string state;
+            public string error;
         }
     }
 }

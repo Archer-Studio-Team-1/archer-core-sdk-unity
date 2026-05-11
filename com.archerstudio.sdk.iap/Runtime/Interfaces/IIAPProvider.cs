@@ -22,5 +22,11 @@ namespace ArcherStudio.SDK.IAP {
         /// Subscription state is only valid once this is true.
         /// </summary>
         bool IsPurchasesFetchCompleted { get; }
+
+        /// <summary>
+        /// Fired when a subscription's active state changes after a FetchPurchases refresh.
+        /// Parameters: productId, isNowActive.
+        /// </summary>
+        event Action<string, bool> OnSubscriptionStateChanged;
     }
 }

@@ -10,6 +10,7 @@ namespace ArcherStudio.SDK.IAP {
     public class StubIAPProvider : IIAPProvider {
         public bool IsInitialized { get; private set; }
         public bool IsPurchasesFetchCompleted { get; private set; }
+        public event Action<string, bool> OnSubscriptionStateChanged;
 
         public void Initialize(IAPConfig config, Action<bool> onComplete) {
             IsInitialized = true;
@@ -38,7 +39,9 @@ namespace ArcherStudio.SDK.IAP {
 
         public SubscriptionInfo? GetSubscriptionInfo(string productId) => null;
 
-        public void FetchSubscriptionProduct(Action<bool> onComplete) { }
+        public void FetchSubscriptionProduct(Action<bool> onComplete) {
+            onComplete?.Invoke(true);
+        }
 
         public void Dispose() {
             IsInitialized = false;
