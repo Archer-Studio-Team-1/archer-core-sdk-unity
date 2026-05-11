@@ -28,12 +28,13 @@ namespace ArcherStudio.SDK.IAP {
         private IAPConfig _config;
         private bool _serverValidationEnabled;
         private PendingPurchaseStore _pendingStore;
+        private SubscriptionTokenStore _tokenStore;
 
         // Cached server-side subscription details (productId → result)
         private readonly Dictionary<string, SubscriptionStatusResult> _subscriptionDetails
             = new Dictionary<string, SubscriptionStatusResult>();
 
-        // Cached purchase tokens for subscription queries
+        // In-memory mirror of the persistent token store (productId → tokens)
         private readonly Dictionary<string, (string purchaseToken, string transactionId)> _subscriptionTokens
             = new Dictionary<string, (string, string)>();
 
@@ -124,6 +125,16 @@ namespace ArcherStudio.SDK.IAP {
             }
 
             _pendingStore = new PendingPurchaseStore();
+            _tokenStore = new SubscriptionTokenStore();
+
+            // Hydrate in-memory cache from persisted tokens so QuerySubscriptionStatus
+            // works on app restart for subscriptions whose receipt is no longer accessible
+            // (Unity IAP v5 only exposes receipt on PendingOrder).
+            foreach (var entry in _tokenStore.GetAll()) {
+                _subscriptionTokens[entry.productId] = (entry.purchaseToken, entry.transactionId);
+            }
+            SDKLogger.Info(Tag,
+                $"[Diag] SubscriptionTokenStore loaded {_subscriptionTokens.Count} cached tokens.");
 
             _provider.Initialize(_config, success => {
                 if (success) {
@@ -185,6 +196,12 @@ namespace ArcherStudio.SDK.IAP {
             } catch (Exception e) {
                 SDKLogger.Warning(Tag, $"Failed to parse receipt for {productId}: {e.Message}");
             }
+
+            SDKLogger.Info(Tag,
+                $"[Diag] OnProviderSubscriptionOrderObserved: productId={productId}, " +
+                $"txn={transactionId ?? "<null>"}, " +
+                $"purchaseToken={(string.IsNullOrEmpty(purchaseToken) ? "<missing>" : purchaseToken.Substring(0, Math.Min(8, purchaseToken.Length)) + "…")}");
+
             CacheSubscriptionToken(productId, purchaseToken, transactionId);
         }
 
@@ -327,6 +344,11 @@ namespace ArcherStudio.SDK.IAP {
             // callers often pass the platform store id (e.g. "com.archer.idk.vip7").
             var canonicalId = _provider?.ResolveProductId(productId) ?? productId;
 
+            SDKLogger.Info(Tag,
+                $"[Diag] GetSubscriptionInfo({productId}): canonical={canonicalId}, " +
+                $"storeSaysActive={storeInfo.Value.IsSubscribed}, " +
+                $"hasServerData={_subscriptionDetails.ContainsKey(canonicalId)}");
+
             // Server data present and not a failed query (Status != Unknown means we got an
             // authoritative answer — even if response.valid was false for expired/cancelled).
             if (_subscriptionDetails.TryGetValue(canonicalId, out var serverData)
@@ -409,13 +431,36 @@ namespace ArcherStudio.SDK.IAP {
         }
 
         /// <summary>
+        /// Force-revoke a subscription: clear it from the active cache and fire
+        /// OnSubscriptionStateChanged(productId, false). Use when game-side evidence
+        /// (local timestamp, server backend, account flow) shows the subscription is
+        /// no longer valid even though the Unity IAP store cache still reports it
+        /// active (Google Play retention, sandbox license-tester quirks, etc).
+        /// </summary>
+        public void ForceMarkSubscriptionInactive(string productId) {
+            if (_provider == null) return;
+            var canonicalId = _provider.ResolveProductId(productId);
+            _subscriptionDetails.Remove(canonicalId);
+            _provider.ForceMarkInactive(productId);
+        }
+
+        /// <summary>
         /// Cache a purchase token/transactionId for a subscription product.
         /// Used internally for subsequent QuerySubscriptionStatus calls.
         /// </summary>
         public void CacheSubscriptionToken(string productId, string purchaseToken, string transactionId) {
             if (string.IsNullOrEmpty(productId)) return;
             var canonicalId = _provider?.ResolveProductId(productId) ?? productId;
+
+            // Preserve any non-empty value we already have when the new payload is empty
+            // (confirmed orders from FetchPurchases may have null receipt → null token).
+            if (_subscriptionTokens.TryGetValue(canonicalId, out var existing)) {
+                if (string.IsNullOrEmpty(purchaseToken)) purchaseToken = existing.purchaseToken;
+                if (string.IsNullOrEmpty(transactionId)) transactionId = existing.transactionId;
+            }
+
             _subscriptionTokens[canonicalId] = (purchaseToken, transactionId);
+            _tokenStore?.Set(canonicalId, purchaseToken, transactionId);
         }
 
         /// <summary>

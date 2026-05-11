@@ -45,5 +45,14 @@ namespace ArcherStudio.SDK.IAP {
         /// matching product is found.
         /// </summary>
         string ResolveProductId(string idOrStoreId);
+
+        /// <summary>
+        /// Force-remove a product from the active subscription cache. Use when the
+        /// game layer has authoritative evidence (server response, local timestamp,
+        /// account state) that a subscription is no longer valid even though the
+        /// Unity IAP store cache still reports it. Fires OnSubscriptionStateChanged.
+        /// Returns true if the product was previously in the cache.
+        /// </summary>
+        bool ForceMarkInactive(string productId);
     }
 }

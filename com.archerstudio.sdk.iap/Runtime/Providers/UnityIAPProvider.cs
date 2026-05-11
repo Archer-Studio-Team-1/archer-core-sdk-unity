@@ -729,12 +729,24 @@ namespace ArcherStudio.SDK.IAP {
                 var productId = product.definition.id;
                 _activeSubscriptions.Add(productId);
 
+                // Diagnostic — helps trace "expired sub still active" bugs by showing exactly
+                // what FetchPurchases returns to the SDK.
+                SDKLogger.Info(Tag,
+                    $"[Diag] Order observed: productId={productId}, " +
+                    $"txn={transactionId ?? "<null>"}, " +
+                    $"receiptLen={(receipt?.Length ?? 0)}, " +
+                    $"hasReceipt={!string.IsNullOrEmpty(receipt)}");
+
                 // Expose receipt + transaction id so the manager can extract a purchase
                 // token for server-side subscription status queries — necessary because
                 // confirmed orders re-fetched on app launch do not flow through
                 // OnPurchasePending → CompletePurchaseSuccess path that caches tokens.
                 if (!string.IsNullOrEmpty(transactionId) || !string.IsNullOrEmpty(receipt)) {
                     OnSubscriptionOrderObserved?.Invoke(productId, transactionId, receipt);
+                } else {
+                    SDKLogger.Warning(Tag,
+                        $"[Diag] Order for {productId} has neither transactionId nor receipt — " +
+                        "server status query will not be possible for this sub.");
                 }
             }
         }
@@ -749,6 +761,16 @@ namespace ArcherStudio.SDK.IAP {
             var product = _controller.GetProductById(idOrStoreId);
             if (product == null) product = FindProductByStoreId(idOrStoreId);
             return product != null ? product.definition.id : idOrStoreId;
+        }
+
+        public bool ForceMarkInactive(string productId) {
+            var canonicalId = ResolveProductId(productId);
+            if (string.IsNullOrEmpty(canonicalId)) return false;
+            if (!_activeSubscriptions.Remove(canonicalId)) return false;
+            SDKLogger.Info(Tag,
+                $"[ForceMarkInactive] Removed {canonicalId} from active subscription cache.");
+            OnSubscriptionStateChanged?.Invoke(canonicalId, false);
+            return true;
         }
 
         private UnityEngine.Purchasing.Product FindProductByStoreId(string storeId) {

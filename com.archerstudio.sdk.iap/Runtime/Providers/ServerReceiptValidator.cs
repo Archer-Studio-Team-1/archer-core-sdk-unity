@@ -245,6 +245,7 @@ namespace ArcherStudio.SDK.IAP {
                 purchaseToken = purchaseData.purchaseToken,
                 packageName = Application.identifier,
             };
+            PopulateClientIdentity(request);
 
             return JsonUtility.ToJson(request);
         }
@@ -257,10 +258,59 @@ namespace ArcherStudio.SDK.IAP {
                 productId = productId,
                 receipt = receipt,
             };
+            PopulateClientIdentity(request);
 
             return JsonUtility.ToJson(request);
         }
         #endif
+
+        /// <summary>
+        /// Captures client-side identifiers so the server can persist them with the
+        /// iap_transactions document for later audit/traceability. All fields best-effort —
+        /// if a value is unavailable we fall back to safe defaults.
+        /// </summary>
+        private static (string deviceId, string adjustId, string userId, string appVersion,
+                        string appBundleId, string osVersion, string deviceModel, string systemLanguage)
+            CaptureClientIdentity() {
+            string deviceId = null, adjustId = null, userId = null;
+            try {
+                var profile = ArcherStudio.SDK.Tracking.TrackingManager.Instance?.CurrentUserProfile;
+                deviceId = profile?.DeviceId;
+                adjustId = profile?.AdjustId;
+                userId = profile?.FirebaseStorageId;
+            } catch (Exception e) {
+                SDKLogger.Warning(Tag, $"CaptureClientIdentity: {e.Message}");
+            }
+            if (string.IsNullOrEmpty(deviceId)) deviceId = SystemInfo.deviceUniqueIdentifier;
+            return (deviceId, adjustId, userId,
+                    Application.version, Application.identifier,
+                    SystemInfo.operatingSystem, SystemInfo.deviceModel,
+                    Application.systemLanguage.ToString());
+        }
+
+        private static void PopulateClientIdentity(ValidationRequest request) {
+            var id = CaptureClientIdentity();
+            request.deviceId = id.deviceId;
+            request.adjustId = id.adjustId;
+            request.userId = id.userId;
+            request.appVersion = id.appVersion;
+            request.appBundleId = id.appBundleId;
+            request.osVersion = id.osVersion;
+            request.deviceModel = id.deviceModel;
+            request.systemLanguage = id.systemLanguage;
+        }
+
+        private static void PopulateClientIdentity(SubscriptionQueryRequest request) {
+            var id = CaptureClientIdentity();
+            request.deviceId = id.deviceId;
+            request.adjustId = id.adjustId;
+            request.userId = id.userId;
+            request.appVersion = id.appVersion;
+            request.appBundleId = id.appBundleId;
+            request.osVersion = id.osVersion;
+            request.deviceModel = id.deviceModel;
+            request.systemLanguage = id.systemLanguage;
+        }
 
         // ─── Subscription Status Query ───
 
@@ -287,6 +337,7 @@ namespace ArcherStudio.SDK.IAP {
                 platform = "unknown",
                 #endif
             };
+            PopulateClientIdentity(payload);
 
             var json = JsonUtility.ToJson(payload);
             IAPCoroutineRunner.Run(SendSubscriptionQuery(subscriptionUrl, json, productId, onComplete));
@@ -295,6 +346,10 @@ namespace ArcherStudio.SDK.IAP {
         private System.Collections.IEnumerator SendSubscriptionQuery(
             string url, string jsonPayload, string productId,
             Action<SubscriptionStatusResult> onComplete) {
+
+            SDKLogger.Info(Tag,
+                $"[Diag] Subscription status query → {url} | productId={productId} | " +
+                $"payloadLen={jsonPayload?.Length ?? 0}");
 
             var request = new UnityWebRequest(url, "POST");
             var bodyRaw = Encoding.UTF8.GetBytes(jsonPayload);
@@ -311,7 +366,9 @@ namespace ArcherStudio.SDK.IAP {
 
             if (request.result == UnityWebRequest.Result.Success && request.responseCode == 200) {
                 try {
-                    var response = JsonUtility.FromJson<SubscriptionQueryResponse>(request.downloadHandler.text);
+                    var body = request.downloadHandler.text;
+                    SDKLogger.Info(Tag, $"[Diag] Subscription query response 200: {body}");
+                    var response = JsonUtility.FromJson<SubscriptionQueryResponse>(body);
                     var status = MapSubscriptionStatus(response.status);
 
                     System.DateTime? expirationDate = null;
@@ -375,6 +432,15 @@ namespace ArcherStudio.SDK.IAP {
             public string transactionId;
             public string receipt;
             public string packageName;
+            // Client identity for audit trail (populated by PopulateClientIdentity)
+            public string deviceId;
+            public string adjustId;
+            public string userId;
+            public string appVersion;
+            public string appBundleId;
+            public string osVersion;
+            public string deviceModel;
+            public string systemLanguage;
         }
 
         [Serializable]
@@ -413,6 +479,15 @@ namespace ArcherStudio.SDK.IAP {
             public string purchaseToken;
             public string transactionId;
             public string packageName;
+            // Client identity for audit trail (populated by PopulateClientIdentity)
+            public string deviceId;
+            public string adjustId;
+            public string userId;
+            public string appVersion;
+            public string appBundleId;
+            public string osVersion;
+            public string deviceModel;
+            public string systemLanguage;
         }
 
         [Serializable]

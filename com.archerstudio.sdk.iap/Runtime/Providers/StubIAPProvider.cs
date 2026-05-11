@@ -42,6 +42,8 @@ namespace ArcherStudio.SDK.IAP {
 
         public string ResolveProductId(string idOrStoreId) => idOrStoreId;
 
+        public bool ForceMarkInactive(string productId) => false;
+
         public void FetchSubscriptionProduct(Action<bool> onComplete) {
             onComplete?.Invoke(true);
         }
