@@ -37,5 +37,13 @@ namespace ArcherStudio.SDK.IAP {
         /// Parameters: productId, transactionId, receipt.
         /// </summary>
         event Action<string, string, string> OnSubscriptionOrderObserved;
+
+        /// <summary>
+        /// Resolve an externally-supplied id (which may be the canonical definition.id
+        /// OR the platform-specific store id) to the canonical definition.id used
+        /// internally by the provider's caches. Returns the input unchanged if no
+        /// matching product is found.
+        /// </summary>
+        string ResolveProductId(string idOrStoreId);
     }
 }

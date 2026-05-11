@@ -323,9 +323,13 @@ namespace ArcherStudio.SDK.IAP {
             var storeInfo = _provider?.GetSubscriptionInfo(productId);
             if (!storeInfo.HasValue) return null;
 
+            // Normalize: caches are keyed by the provider's canonical definition.id, but
+            // callers often pass the platform store id (e.g. "com.archer.idk.vip7").
+            var canonicalId = _provider?.ResolveProductId(productId) ?? productId;
+
             // Server data present and not a failed query (Status != Unknown means we got an
             // authoritative answer — even if response.valid was false for expired/cancelled).
-            if (_subscriptionDetails.TryGetValue(productId, out var serverData)
+            if (_subscriptionDetails.TryGetValue(canonicalId, out var serverData)
                 && serverData.Status != SubscriptionStatus.Unknown) {
 
                 // Authoritative active check: prefer ExpirationDate vs now (handles
@@ -379,19 +383,22 @@ namespace ArcherStudio.SDK.IAP {
                 return;
             }
 
-            if (!_subscriptionTokens.TryGetValue(productId, out var tokens) ||
+            var canonicalId = _provider?.ResolveProductId(productId) ?? productId;
+            if (!_subscriptionTokens.TryGetValue(canonicalId, out var tokens) ||
                 (string.IsNullOrEmpty(tokens.purchaseToken) && string.IsNullOrEmpty(tokens.transactionId))) {
-                SDKLogger.Warning(Tag, $"QuerySubscriptionStatus: no purchase token cached for {productId}.");
+                SDKLogger.Warning(Tag,
+                    $"QuerySubscriptionStatus: no purchase token cached for {productId} (canonical={canonicalId}).");
                 onComplete?.Invoke(SubscriptionStatusResult.Failed("No purchase token available."));
                 return;
             }
 
             _receiptValidator.QuerySubscriptionStatus(
-                tokens.purchaseToken, tokens.transactionId, productId, result => {
-                if (result.Success) {
-                    _subscriptionDetails[productId] = result;
+                tokens.purchaseToken, tokens.transactionId, canonicalId, result => {
+                if (result.Status != SubscriptionStatus.Unknown) {
+                    _subscriptionDetails[canonicalId] = result;
                     SDKLogger.Info(Tag,
-                        $"Subscription status for {productId}: {result.Status}, " +
+                        $"Subscription status for {productId} (canonical={canonicalId}): " +
+                        $"valid={result.Success}, status={result.Status}, " +
                         $"expires={result.ExpirationDate}, autoRenew={result.IsAutoRenewing}");
                 } else {
                     SDKLogger.Warning(Tag,
@@ -406,9 +413,9 @@ namespace ArcherStudio.SDK.IAP {
         /// Used internally for subsequent QuerySubscriptionStatus calls.
         /// </summary>
         public void CacheSubscriptionToken(string productId, string purchaseToken, string transactionId) {
-            if (!string.IsNullOrEmpty(productId)) {
-                _subscriptionTokens[productId] = (purchaseToken, transactionId);
-            }
+            if (string.IsNullOrEmpty(productId)) return;
+            var canonicalId = _provider?.ResolveProductId(productId) ?? productId;
+            _subscriptionTokens[canonicalId] = (purchaseToken, transactionId);
         }
 
         /// <summary>

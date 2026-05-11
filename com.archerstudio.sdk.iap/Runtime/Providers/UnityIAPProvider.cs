@@ -744,6 +744,13 @@ namespace ArcherStudio.SDK.IAP {
         /// This handles the case where callers pass store IDs (e.g. "com.archer.idk.vip30")
         /// but the product's definition.id is different (e.g. "vip30days").
         /// </summary>
+        public string ResolveProductId(string idOrStoreId) {
+            if (string.IsNullOrEmpty(idOrStoreId) || _controller == null) return idOrStoreId;
+            var product = _controller.GetProductById(idOrStoreId);
+            if (product == null) product = FindProductByStoreId(idOrStoreId);
+            return product != null ? product.definition.id : idOrStoreId;
+        }
+
         private UnityEngine.Purchasing.Product FindProductByStoreId(string storeId) {
             if (_controller == null) return null;
             foreach (var product in _controller.GetProducts()) {

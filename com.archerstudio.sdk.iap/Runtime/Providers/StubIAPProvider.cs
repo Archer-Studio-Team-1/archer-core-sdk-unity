@@ -40,6 +40,8 @@ namespace ArcherStudio.SDK.IAP {
 
         public SubscriptionInfo? GetSubscriptionInfo(string productId) => null;
 
+        public string ResolveProductId(string idOrStoreId) => idOrStoreId;
+
         public void FetchSubscriptionProduct(Action<bool> onComplete) {
             onComplete?.Invoke(true);
         }
