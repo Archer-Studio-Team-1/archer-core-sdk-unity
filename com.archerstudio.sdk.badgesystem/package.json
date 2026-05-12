@@ -1,6 +1,6 @@
 {
   "name": "com.archerstudio.sdk.badgesystem",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "displayName": "Archer Studio SDK - Badge System",
   "description": "Trie-based badge notification system with XNode graph authoring. Hierarchical red-dot propagation for game UIs.",
   "unity": "6000.0",

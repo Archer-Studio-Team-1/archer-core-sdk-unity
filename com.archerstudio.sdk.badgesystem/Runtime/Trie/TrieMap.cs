@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
-using Cysharp.Text;
 
 namespace ArcherStudio.Trie
 {
@@ -62,7 +61,7 @@ namespace ArcherStudio.Trie
                      Traverse
                      (
                          GetTrieNode(keyPrefix),
-                         ZString.CreateStringBuilder(),
+                         BadgeStringBuilder.Create(),
                          (_, v) => v
                      ))
             {
@@ -94,7 +93,7 @@ namespace ArcherStudio.Trie
             var r = Traverse
             (
                 node,
-                ZString.CreateStringBuilder(),
+                BadgeStringBuilder.Create(),
                 (kBuilder, v) => kBuilder.ToString()
             );
 
@@ -120,7 +119,7 @@ namespace ArcherStudio.Trie
         public IEnumerable<KeyValuePair<string, TValue>> KeyValuePairsBy(string keyPrefix)
         {
             var node = GetTrieNode(keyPrefix);
-            var buffer = ZString.CreateStringBuilder();
+            var buffer = BadgeStringBuilder.Create();
             if (!string.IsNullOrEmpty(node.Word))
             {
                 if (buffer.Length > 0)
@@ -248,7 +247,7 @@ namespace ArcherStudio.Trie
         public IEnumerable<KeyValuePair<string, TValue>> GetLongestKeyValuePairs()
         {
             var longestKeyValuePairs = new List<KeyValuePair<string, TValue>>();
-            var buffer = ZString.CreateStringBuilder();
+            var buffer = BadgeStringBuilder.Create();
             var length = new Wrapper<int>(0);
             GetLongestKeyValuePairs(rootTrieNode, longestKeyValuePairs, buffer, length);
             return longestKeyValuePairs;
@@ -260,7 +259,7 @@ namespace ArcherStudio.Trie
         public IEnumerable<KeyValuePair<string, TValue>> GetShortestKeyValuePairs()
         {
             var shortestKeyValuePairs = new List<KeyValuePair<string, TValue>>();
-            var buffer = ZString.CreateStringBuilder();
+            var buffer = BadgeStringBuilder.Create();
             var length = new Wrapper<int>(int.MaxValue);
             GetShortestKeyValuePairs(rootTrieNode, shortestKeyValuePairs, buffer, length);
             return shortestKeyValuePairs;
@@ -292,7 +291,7 @@ namespace ArcherStudio.Trie
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private IEnumerable<TResult> Traverse<TResult>(TrieNode<TValue> trieNode,
-            Utf16ValueStringBuilder buffer, Func<Utf16ValueStringBuilder, TValue, TResult> transform)
+            BadgeStringBuilder buffer, Func<BadgeStringBuilder, TValue, TResult> transform)
         {
             if (trieNode == null)
             {
@@ -330,7 +329,7 @@ namespace ArcherStudio.Trie
         }
 
         private void GetLongestKeyValuePairs(TrieNode<TValue> trieNode,
-            ICollection<KeyValuePair<string, TValue>> longestKeyValuePairs, Utf16ValueStringBuilder buffer, Wrapper<int> length)
+            ICollection<KeyValuePair<string, TValue>> longestKeyValuePairs, BadgeStringBuilder buffer, Wrapper<int> length)
         {
             if (trieNode.HasValue())
             {
@@ -356,7 +355,7 @@ namespace ArcherStudio.Trie
         }
 
         private void GetShortestKeyValuePairs(TrieNode<TValue> trieNode,
-            ICollection<KeyValuePair<string, TValue>> shortestKeyValuePairs, Utf16ValueStringBuilder buffer, Wrapper<int> length)
+            ICollection<KeyValuePair<string, TValue>> shortestKeyValuePairs, BadgeStringBuilder buffer, Wrapper<int> length)
         {
             if (trieNode.HasValue())
             {

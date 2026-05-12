@@ -2,8 +2,7 @@
     "name": "ArcherStudio.SDK.BadgeSystem",
     "rootNamespace": "ArcherStudio.SDK.BadgeSystem",
     "references": [
-        "XNode",
-        "ZString"
+        "XNode"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],
@@ -12,6 +11,12 @@
     "precompiledReferences": [],
     "autoReferenced": true,
     "defineConstraints": [],
-    "versionDefines": [],
+    "versionDefines": [
+        {
+            "name": "com.cysharp.zstring",
+            "expression": "1.0.0",
+            "define": "ARCHER_BADGE_USE_ZSTRING"
+        }
+    ],
     "noEngineReferences": false
 }

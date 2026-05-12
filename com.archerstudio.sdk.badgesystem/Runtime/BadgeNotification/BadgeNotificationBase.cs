@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
-using Cysharp.Text;
 using ArcherStudio.Trie;
 
 namespace ArcherStudio.Badge.Runtime
@@ -126,7 +125,7 @@ namespace ArcherStudio.Badge.Runtime
                 node.Value.badgeCount += value;
 
             ReadOnlySpan<char> keySpan = key.AsSpan();
-            var fullPathBuilder = ZString.CreateStringBuilder();
+            var fullPathBuilder = BadgeStringBuilder.Create();
             int start = 0;
 
             for (int i = 0; i <= keySpan.Length; i++)
@@ -180,7 +179,7 @@ namespace ArcherStudio.Badge.Runtime
                 node.Value.badgeCount += badgeData.Value.badgeCount;
 
             ReadOnlySpan<char> keySpan = badgeData.Path.AsSpan();
-            var fullPathBuilder = ZString.CreateStringBuilder();
+            var fullPathBuilder = BadgeStringBuilder.Create();
             int start = 0;
 
             for (int i = 0; i <= keySpan.Length; i++)

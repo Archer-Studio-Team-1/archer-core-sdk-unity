@@ -1,4 +1,3 @@
-using Cysharp.Text;
 using UnityEngine;
 using ArcherStudio.Trie;
 using XNode;
@@ -24,7 +23,7 @@ namespace ArcherStudio.Badge.Runtime
         private void OnValidate()
         {
             var p = GetInputValue<string>(FIELD);
-            name = string.IsNullOrEmpty(key) ? DEFAULT_NAME : ZString.Concat(p, Const.SEPARATOR, key);
+            name = string.IsNullOrEmpty(key) ? DEFAULT_NAME : BadgeStringHelper.Concat(p, Const.SEPARATOR, key);
             //save this asset
             UnityEditor.EditorUtility.SetDirty(this);
             
@@ -39,7 +38,7 @@ namespace ArcherStudio.Badge.Runtime
         public override object GetValue(NodePort port)
         {
             var input = GetInputValue<string>(FIELD);
-            var value = ZString.Concat(input, Const.SEPARATOR, key);
+            var value = BadgeStringHelper.Concat(input, Const.SEPARATOR, key);
             return value;
         }
     }
