@@ -2,7 +2,8 @@
     "name": "ArcherStudio.SDK.BadgeSystem",
     "rootNamespace": "ArcherStudio.SDK.BadgeSystem",
     "references": [
-        "XNode"
+        "XNode",
+        "ZString"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],
