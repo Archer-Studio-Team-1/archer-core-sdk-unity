@@ -7,7 +7,7 @@ namespace ArcherStudio.SDK.Firestore {
     /// IReadOnlyDictionary&lt;string, object&gt; payloads returned by Firebase Functions
     /// and Firestore document snapshots.
     /// </summary>
-    internal static class DictExtensions {
+    public static class DictExtensions {
 
         public static T TryGet<T>(this IReadOnlyDictionary<string, object> dict,
                                   string key, T fallback = default) {
