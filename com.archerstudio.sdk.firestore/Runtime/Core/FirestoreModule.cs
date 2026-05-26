@@ -28,6 +28,7 @@ namespace ArcherStudio.SDK.Firestore {
         public IFirestoreService Service { get; private set; }
         public IUserRepository UserRepository { get; private set; }
         public ISaveRepository SaveRepository { get; private set; }
+        public IBackupUploader BackupUploader { get; private set; }
         public IIapCatalogService IapCatalog { get; private set; }
         public FeatureRegistry Features { get; private set; }
 
@@ -130,6 +131,7 @@ namespace ArcherStudio.SDK.Firestore {
             Service = new FirestoreServiceProvider(config, functionsInstance);
             UserRepository = new UserRepository(Service);
             SaveRepository = new SaveRepository(Service);
+            BackupUploader = new BackupUploader(Service);
             IapCatalog = new IapCatalogService(Service, config.IapCatalogCacheTtlMs);
             Features = new FeatureRegistry(Service, config.FeatureRegistryCacheTtlMs);
         }
@@ -139,6 +141,7 @@ namespace ArcherStudio.SDK.Firestore {
             Service = new StubFirestoreServiceProvider();
             UserRepository = new UserRepository(Service);
             SaveRepository = new SaveRepository(Service);
+            BackupUploader = new BackupUploader(Service);
             IapCatalog = new IapCatalogService(Service, config?.IapCatalogCacheTtlMs ?? 300_000);
             Features = new FeatureRegistry(Service, config?.FeatureRegistryCacheTtlMs ?? 3_600_000);
         }
