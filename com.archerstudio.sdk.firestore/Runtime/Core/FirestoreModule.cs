@@ -45,15 +45,17 @@ namespace ArcherStudio.SDK.Firestore {
             }
 
 #if HAS_FIREBASE_FIRESTORE && HAS_FIREBASE_AUTH
+            // Firebase Auth is independent of GPGS Login. Even if Login hasn't
+            // signed in (Editor, no Play Services, or user not tapped social
+            // sign-in), we can still establish an anonymous Firebase Auth session
+            // so Firestore reads/writes work end-to-end. When Login completes
+            // later, we link the anonymous account to the social credential.
             var loginModule = LoginModule.Instance;
-            if (loginModule == null || loginModule.Provider == null || !loginModule.Provider.IsSignedIn) {
-                SDKLogger.Warning(Tag, "Login not ready. Firestore module will use stub until LoginSucceededEvent.");
-                UseStub(config);
-                SubscribeToLogin(config, onComplete);
-                return;
-            }
-
             EnsureFirebaseAuth(loginModule, config, onComplete);
+
+            // Also subscribe to LoginSucceededEvent so an in-session sign-in
+            // upgrades the anonymous account to a social-linked one.
+            SubscribeToLogin(config, _ => { });
 #else
             SDKLogger.Warning(Tag, "Firebase.Firestore/Auth not present. Using stub.");
             UseStub(config);
@@ -98,6 +100,17 @@ namespace ArcherStudio.SDK.Firestore {
                 SDKLogger.Info(Tag, $"Firebase Auth already established. UID={existingUid}");
                 ProvisionProviders(config);
                 CompleteInit(onComplete, success: true);
+                return;
+            }
+
+            // No GPGS Login available (Editor without Play Services, user not yet
+            // signed in via social). Go straight to anonymous Firebase Auth so
+            // Firestore works immediately. LoginSucceededEvent handler will
+            // upgrade to a linked credential when GPGS signs in later.
+            if (loginModule == null || loginModule.Provider == null || !loginModule.Provider.IsSignedIn) {
+                SDKLogger.Info(Tag, "Login not signed in — signing into Firebase Auth anonymously.");
+                Firebase.Auth.FirebaseAuth.DefaultInstance.SignInAnonymouslyAsync()
+                    .ContinueWithOnMainThread(task => OnSignInComplete(task, config, onComplete));
                 return;
             }
 
