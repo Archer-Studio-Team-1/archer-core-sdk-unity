@@ -102,11 +102,14 @@ namespace ArcherStudio.SDK.Firestore {
             }
 
             // Bootstrap Firebase Auth via GPGS server auth code (same flow as CloudSave).
+            // If GPGS can't produce a code (Editor, no Play Services, user declined,
+            // signed-in but offline), fall back to anonymous sign-in so cloud sync still
+            // works. Anonymous accounts can be upgraded later via LinkWithCredential.
             loginModule.Provider.GetServerSideAccessCode(config.WebClientId, serverAuthCode => {
                 if (string.IsNullOrEmpty(serverAuthCode)) {
-                    SDKLogger.Warning(Tag, "No GPGS server auth code. Using stub provider.");
-                    UseStub(config);
-                    CompleteInit(onComplete, success: true);
+                    SDKLogger.Warning(Tag, "No GPGS server auth code — signing into Firebase Auth anonymously.");
+                    Firebase.Auth.FirebaseAuth.DefaultInstance.SignInAnonymouslyAsync()
+                        .ContinueWithOnMainThread(task => OnSignInComplete(task, config, onComplete));
                     return;
                 }
 
