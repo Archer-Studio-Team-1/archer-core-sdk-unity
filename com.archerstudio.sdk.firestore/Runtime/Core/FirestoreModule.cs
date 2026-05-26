@@ -27,6 +27,7 @@ namespace ArcherStudio.SDK.Firestore {
 
         public IFirestoreService Service { get; private set; }
         public IUserRepository UserRepository { get; private set; }
+        public ISaveRepository SaveRepository { get; private set; }
         public IIapCatalogService IapCatalog { get; private set; }
         public FeatureRegistry Features { get; private set; }
 
@@ -128,6 +129,7 @@ namespace ArcherStudio.SDK.Firestore {
             var functionsInstance = FirebaseFunctionsBridge.GetInstance(config.FunctionsRegion);
             Service = new FirestoreServiceProvider(config, functionsInstance);
             UserRepository = new UserRepository(Service);
+            SaveRepository = new SaveRepository(Service);
             IapCatalog = new IapCatalogService(Service, config.IapCatalogCacheTtlMs);
             Features = new FeatureRegistry(Service, config.FeatureRegistryCacheTtlMs);
         }
@@ -136,6 +138,7 @@ namespace ArcherStudio.SDK.Firestore {
         private void UseStub(FirestoreConfig config) {
             Service = new StubFirestoreServiceProvider();
             UserRepository = new UserRepository(Service);
+            SaveRepository = new SaveRepository(Service);
             IapCatalog = new IapCatalogService(Service, config?.IapCatalogCacheTtlMs ?? 300_000);
             Features = new FeatureRegistry(Service, config?.FeatureRegistryCacheTtlMs ?? 3_600_000);
         }
