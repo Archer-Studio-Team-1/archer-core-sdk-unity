@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using ArcherStudio.SDK.Core;
 using Firebase.Auth;
+using Firebase.Extensions;
 using Firebase.Firestore;
 using UnityEngine;
 

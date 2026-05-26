@@ -2,6 +2,9 @@ using System;
 using System.Collections.Generic;
 using ArcherStudio.SDK.Core;
 using ArcherStudio.SDK.Login;
+#if HAS_FIREBASE_FIRESTORE && HAS_FIREBASE_AUTH
+using Firebase.Extensions;
+#endif
 using UnityEngine;
 
 namespace ArcherStudio.SDK.Firestore {
@@ -86,10 +89,10 @@ namespace ArcherStudio.SDK.Firestore {
                 var credential = FirebaseAuthBootstrap.BuildPlayGamesCredential(serverAuthCode);
                 if (credential != null) {
                     Firebase.Auth.FirebaseAuth.DefaultInstance.SignInWithCredentialAsync(credential)
-                        .ContinueWith(task => OnSignInComplete(task, config, onComplete));
+                        .ContinueWithOnMainThread(task => OnSignInComplete(task, config, onComplete));
                 } else {
                     Firebase.Auth.FirebaseAuth.DefaultInstance.SignInAnonymouslyAsync()
-                        .ContinueWith(task => OnSignInComplete(task, config, onComplete));
+                        .ContinueWithOnMainThread(task => OnSignInComplete(task, config, onComplete));
                 }
             });
         }

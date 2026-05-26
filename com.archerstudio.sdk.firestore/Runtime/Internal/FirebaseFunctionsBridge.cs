@@ -56,10 +56,13 @@ namespace ArcherStudio.SDK.Firestore {
                     }
                     var resultProp = t.GetType().GetProperty("Result");
                     var httpsResult = resultProp?.GetValue(t);
-                    var data = httpsResult?.GetType().GetProperty("Data")?.GetValue(httpsResult)
-                               as IDictionary<string, object>;
-                    onComplete?.Invoke(FirestoreResult<IReadOnlyDictionary<string, object>>.Succeeded(
-                        (IReadOnlyDictionary<string, object>)data ?? new Dictionary<string, object>()));
+                    var rawData = httpsResult?.GetType().GetProperty("Data")?.GetValue(httpsResult);
+                    IReadOnlyDictionary<string, object> data = rawData switch {
+                        IReadOnlyDictionary<string, object> ro => ro,
+                        IDictionary<string, object> wr => new Dictionary<string, object>(wr),
+                        _ => new Dictionary<string, object>(),
+                    };
+                    onComplete?.Invoke(FirestoreResult<IReadOnlyDictionary<string, object>>.Succeeded(data));
                 });
             } catch (Exception ex) {
                 SDKLogger.Error(Tag, $"Functions reflection failed: {ex.Message}");

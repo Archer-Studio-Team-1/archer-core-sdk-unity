@@ -87,10 +87,4 @@ namespace ArcherStudio.SDK.Firestore {
         }
     }
 
-    internal static class IapDictExtensions {
-        public static T TryGet<T>(this IDictionary<string, object> dict, string key, T fallback = default) {
-            if (dict != null && dict.TryGetValue(key, out var v) && v is T t) return t;
-            return fallback;
-        }
-    }
 }
