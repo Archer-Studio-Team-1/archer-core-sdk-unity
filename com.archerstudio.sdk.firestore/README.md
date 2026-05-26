@@ -3,6 +3,13 @@
 Game-agnostic Firestore data plane for Archer Studio games. Pairs with the server-side
 codebase at `firebase-functions/packages/firestore-core/`.
 
+## Replaces `com.archerstudio.sdk.cloudsave`
+
+This package supersedes the older CloudSave module. New games should depend
+only on Firestore. See `com.archerstudio.sdk.cloudsave/DEPRECATED.md` for the
+migration path. Both packages can coexist during transition — they share the
+same Firebase Auth state.
+
 ## Features
 
 - **User profile bootstrap** — idempotent `users/{uid}` doc with unique 6-char playerCode
