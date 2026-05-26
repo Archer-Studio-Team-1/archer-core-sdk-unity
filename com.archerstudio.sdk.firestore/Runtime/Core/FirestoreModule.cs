@@ -131,6 +131,11 @@ namespace ArcherStudio.SDK.Firestore {
             onComplete?.Invoke(true);
         }
 
+        public void OnConsentChanged(ConsentStatus consent) {
+            // Firestore + Auth không bị gate bởi consent (functional data, không phải analytics/ads).
+            // No-op để satisfy ISDKModule contract.
+        }
+
         public void Dispose() {
             State = ModuleState.Disposed;
             Service = null;
