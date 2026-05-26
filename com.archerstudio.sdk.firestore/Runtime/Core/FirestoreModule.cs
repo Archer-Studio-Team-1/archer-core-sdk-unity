@@ -86,6 +86,8 @@ namespace ArcherStudio.SDK.Firestore {
                 }
 
                 // Try Play Games credential first; if package absent, fall back to anonymous.
+                // Different Firebase Unity SDK versions return different result types
+                // (AuthResult in v11+, FirebaseUser in earlier). Handle both via dynamic.
                 var credential = FirebaseAuthBootstrap.BuildPlayGamesCredential(serverAuthCode);
                 if (credential != null) {
                     Firebase.Auth.FirebaseAuth.DefaultInstance.SignInWithCredentialAsync(credential)
@@ -97,7 +99,7 @@ namespace ArcherStudio.SDK.Firestore {
             });
         }
 
-        private void OnSignInComplete(System.Threading.Tasks.Task<Firebase.Auth.FirebaseUser> task,
+        private void OnSignInComplete(System.Threading.Tasks.Task task,
                                       FirestoreConfig config, Action<bool> onComplete) {
             if (task.IsFaulted || task.IsCanceled) {
                 SDKLogger.Error(Tag, $"Firebase Auth sign-in failed: {task.Exception?.Message}");
@@ -105,7 +107,19 @@ namespace ArcherStudio.SDK.Firestore {
                 CompleteInit(onComplete, success: true);
                 return;
             }
-            SDKLogger.Info(Tag, $"Firebase Auth ready. UID={task.Result.UserId}");
+            // Result may be FirebaseUser (older SDK) or AuthResult (newer). Extract UID via reflection.
+            var resultObj = task.GetType().GetProperty("Result")?.GetValue(task);
+            string uid = null;
+            if (resultObj is Firebase.Auth.FirebaseUser user) {
+                uid = user.UserId;
+            } else if (resultObj != null) {
+                // AuthResult.User.UserId
+                var userProp = resultObj.GetType().GetProperty("User");
+                var userVal = userProp?.GetValue(resultObj) as Firebase.Auth.FirebaseUser;
+                uid = userVal?.UserId;
+            }
+            uid = uid ?? Firebase.Auth.FirebaseAuth.DefaultInstance.CurrentUser?.UserId;
+            SDKLogger.Info(Tag, $"Firebase Auth ready. UID={uid}");
             ProvisionProviders(config);
             CompleteInit(onComplete, success: true);
         }
