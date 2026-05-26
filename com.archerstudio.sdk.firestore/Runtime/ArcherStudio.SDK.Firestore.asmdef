@@ -1,0 +1,27 @@
+{
+  "name": "ArcherStudio.SDK.Firestore",
+  "rootNamespace": "ArcherStudio.SDK.Firestore",
+  "references": [
+    "ArcherStudio.SDK.Core",
+    "ArcherStudio.SDK.Login",
+    "ArcherStudio.SDK.AppCheck",
+    "Firebase.App",
+    "Firebase.Auth",
+    "Firebase.Firestore",
+    "Firebase.Functions"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [],
+  "versionDefines": [
+    { "name": "com.google.firebase.firestore", "expression": "", "define": "HAS_FIREBASE_FIRESTORE" },
+    { "name": "com.google.firebase.auth", "expression": "", "define": "HAS_FIREBASE_AUTH" },
+    { "name": "com.google.firebase.functions", "expression": "", "define": "HAS_FIREBASE_FUNCTIONS" },
+    { "name": "com.google.play.games", "expression": "", "define": "HAS_GPGS" }
+  ],
+  "noEngineReferences": false
+}
