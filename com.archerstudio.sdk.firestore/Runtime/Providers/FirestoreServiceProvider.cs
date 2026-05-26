@@ -30,11 +30,8 @@ namespace ArcherStudio.SDK.Firestore {
             _auth = FirebaseAuth.DefaultInstance;
             _functions = functionsInstance;
             if (config.EnableOfflinePersistence) {
-                _db.Settings = new FirebaseFirestoreSettings {
-                    Host = _db.Settings.Host,
-                    PersistenceEnabled = true,
-                    SslEnabled = true,
-                };
+                // Older Firebase SDK exposes Settings as read-only, with mutable properties.
+                _db.Settings.PersistenceEnabled = true;
             }
         }
 

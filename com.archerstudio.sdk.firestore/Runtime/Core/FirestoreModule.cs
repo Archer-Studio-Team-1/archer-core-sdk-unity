@@ -97,7 +97,7 @@ namespace ArcherStudio.SDK.Firestore {
             });
         }
 
-        private void OnSignInComplete(System.Threading.Tasks.Task<Firebase.Auth.AuthResult> task,
+        private void OnSignInComplete(System.Threading.Tasks.Task<Firebase.Auth.FirebaseUser> task,
                                       FirestoreConfig config, Action<bool> onComplete) {
             if (task.IsFaulted || task.IsCanceled) {
                 SDKLogger.Error(Tag, $"Firebase Auth sign-in failed: {task.Exception?.Message}");
@@ -105,7 +105,7 @@ namespace ArcherStudio.SDK.Firestore {
                 CompleteInit(onComplete, success: true);
                 return;
             }
-            SDKLogger.Info(Tag, $"Firebase Auth ready. UID={task.Result.User.UserId}");
+            SDKLogger.Info(Tag, $"Firebase Auth ready. UID={task.Result.UserId}");
             ProvisionProviders(config);
             CompleteInit(onComplete, success: true);
         }
