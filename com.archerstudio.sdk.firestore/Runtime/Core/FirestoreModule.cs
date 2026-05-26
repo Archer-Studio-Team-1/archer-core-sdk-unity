@@ -62,10 +62,33 @@ namespace ArcherStudio.SDK.Firestore {
         }
 
 #if HAS_FIREBASE_FIRESTORE && HAS_FIREBASE_AUTH
+        private bool _waitingForLogin;
+        private FirestoreConfig _pendingConfig;
+
         private void SubscribeToLogin(FirestoreConfig config, Action<bool> onComplete) {
-            // Defer init until login completes. Other modules may also wait, so we never block.
-            // For Phase 4 MVP we just complete init now and re-attempt on first usage.
+            // Init returns ready=true immediately so the SDK boot chain isn't blocked.
+            // Stub providers are already wired. When LoginSucceededEvent fires we
+            // upgrade to real Firebase Auth + ProvisionProviders.
+            _pendingConfig = config;
+            if (!_waitingForLogin) {
+                _waitingForLogin = true;
+                ArcherStudio.SDK.Core.SDKEventBus.Subscribe<ArcherStudio.SDK.Login.LoginSucceededEvent>(OnLoginSucceeded);
+                SDKLogger.Info(Tag, "Subscribed to LoginSucceededEvent — will upgrade to Firebase Auth when login completes.");
+            }
             CompleteInit(onComplete, success: true);
+        }
+
+        private void OnLoginSucceeded(ArcherStudio.SDK.Login.LoginSucceededEvent evt) {
+            SDKLogger.Info(Tag, $"LoginSucceededEvent received (playerId={evt.PlayerId}). Upgrading from stub to real provider.");
+            var loginModule = LoginModule.Instance;
+            if (loginModule == null || _pendingConfig == null) {
+                SDKLogger.Warning(Tag, "OnLoginSucceeded: LoginModule or pending config missing — staying on stub.");
+                return;
+            }
+            // Re-run the auth handshake. EnsureFirebaseAuth handles the "already
+            // signed in" fast path which is the common case when CloudSave's
+            // sign-in completed before this event arrived.
+            EnsureFirebaseAuth(loginModule, _pendingConfig, _ => { });
         }
 
         private void EnsureFirebaseAuth(LoginModule loginModule, FirestoreConfig config, Action<bool> onComplete) {
