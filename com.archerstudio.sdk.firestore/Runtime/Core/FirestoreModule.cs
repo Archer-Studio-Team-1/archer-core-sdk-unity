@@ -94,7 +94,27 @@ namespace ArcherStudio.SDK.Firestore {
         }
 
         private void EnsureFirebaseAuth(LoginModule loginModule, FirestoreConfig config, Action<bool> onComplete) {
-            // CloudSave may have already signed into Firebase Auth. Check first.
+            // Firebase.App must finish dependency check before Auth calls succeed.
+            // "An internal error has occurred" typically means SignIn ran before
+            // FirebaseApp was ready. We gate every sign-in attempt on the check.
+            Firebase.FirebaseApp.CheckAndFixDependenciesAsync().ContinueWithOnMainThread(depTask => {
+                if (depTask.IsFaulted) {
+                    SDKLogger.Error(Tag, $"Firebase dependency check faulted: {depTask.Exception?.Message}");
+                    UseStub(config);
+                    CompleteInit(onComplete, success: true);
+                    return;
+                }
+                if (depTask.Result != Firebase.DependencyStatus.Available) {
+                    SDKLogger.Error(Tag, $"Firebase dependencies unavailable: {depTask.Result}");
+                    UseStub(config);
+                    CompleteInit(onComplete, success: true);
+                    return;
+                }
+                ContinueEnsureFirebaseAuth(loginModule, config, onComplete);
+            });
+        }
+
+        private void ContinueEnsureFirebaseAuth(LoginModule loginModule, FirestoreConfig config, Action<bool> onComplete) {
             var existingUid = Firebase.Auth.FirebaseAuth.DefaultInstance.CurrentUser?.UserId;
             if (!string.IsNullOrEmpty(existingUid)) {
                 SDKLogger.Info(Tag, $"Firebase Auth already established. UID={existingUid}");
