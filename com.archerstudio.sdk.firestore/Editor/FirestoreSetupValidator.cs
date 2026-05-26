@@ -8,14 +8,14 @@ namespace ArcherStudio.SDK.Firestore.Editor {
 
         private const string Tag = "Firestore";
 
-        [MenuItem("Archer Studio/SDK/Firestore/Validate Setup")]
+        [MenuItem("ArcherStudio/SDK/Firestore/Validate Setup")]
         private static void Validate() {
             var cfg = Resources.Load<FirestoreConfig>("FirestoreConfig");
             if (cfg == null) {
                 EditorUtility.DisplayDialog(
                     "Firestore Setup",
                     "FirestoreConfig.asset not found in any Resources/ folder.\n\n" +
-                    "Create: right-click in Resources/ → Create → Archer Studio → SDK → Firestore Config",
+                    "Create: right-click in Resources/ → Create → ArcherStudio → SDK → Firestore Config",
                     "OK");
                 return;
             }

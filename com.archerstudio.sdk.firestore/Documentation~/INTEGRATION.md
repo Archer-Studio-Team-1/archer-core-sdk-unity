@@ -44,7 +44,7 @@ After Unity refresh, the Package Manager should show the package version.
 ## 3. FirestoreConfig asset
 
 Create `Assets/Resources/FirestoreConfig.asset` via the Unity menu:
-`Create / Archer Studio / SDK / Firestore Config`.
+`Create / ArcherStudio / SDK / Firestore Config`.
 
 | Field | Recommended |
 |-------|-------------|
@@ -55,7 +55,7 @@ Create `Assets/Resources/FirestoreConfig.asset` via the Unity menu:
 | `FeatureRegistryCacheTtlMs` | `3600000` (1 h) |
 | `VerboseLogging` | `false` in PROD |
 
-Validate via menu: `Archer Studio / SDK / Firestore / Validate Setup`.
+Validate via menu: `ArcherStudio / SDK / Firestore / Validate Setup`.
 
 ## 4. Boot flow wiring
 

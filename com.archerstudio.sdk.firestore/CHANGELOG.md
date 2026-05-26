@@ -10,7 +10,7 @@
 - `FeatureRegistry` — reads `_config/save_features_registry` (game-agnostic)
 - `DictExtensions.TryGet<T>` — typed lookup with numeric widening
 - 24 NUnit tests
-- Editor menu: `Archer Studio / SDK / Firestore / Validate Setup`
+- Editor menu: `ArcherStudio / SDK / Firestore / Validate Setup`
 - Quickstart sample (`Samples~/QuickStart`)
 
 ### Changed

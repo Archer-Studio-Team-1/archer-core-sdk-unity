@@ -39,12 +39,12 @@ codebase.
    "com.archerstudio.sdk.firestore": "https://github.com/<org>/archer-core-sdk-unity.git?path=com.archerstudio.sdk.firestore#<ref>"
    ```
 2. Create `Assets/Resources/FirestoreConfig.asset` via
-   `Create / Archer Studio / SDK / Firestore Config`.
+   `Create / ArcherStudio / SDK / Firestore Config`.
 3. Set `WebClientId` (same value game uses for Login / CloudSave), keep
    `FunctionsRegion = asia-southeast1` (or your project region).
 4. Server-side: seed `_config/save_features_registry` + `iap_catalog/*` for your
    Firebase project. See `Documentation~/INTEGRATION.md`.
-5. Validate via menu `Archer Studio / SDK / Firestore / Validate Setup`.
+5. Validate via menu `ArcherStudio / SDK / Firestore / Validate Setup`.
 6. From your boot flow, after Login + SaveLoad are ready:
    ```csharp
    var module = FirestoreModule.Instance;

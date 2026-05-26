@@ -5,7 +5,7 @@ namespace ArcherStudio.SDK.Firestore {
     /// <summary>
     /// Place at Resources/FirestoreConfig.asset. Presence enables the module.
     /// </summary>
-    [CreateAssetMenu(fileName = "FirestoreConfig", menuName = "Archer Studio/SDK/Firestore Config")]
+    [CreateAssetMenu(fileName = "FirestoreConfig", menuName = "ArcherStudio/SDK/Firestore Config")]
     public sealed class FirestoreConfig : ScriptableObject {
 
         [Tooltip("Web client ID for Firebase Auth via GPGS. Same as CloudSaveConfig.WebClientId.")]
