@@ -14,8 +14,10 @@ namespace ArcherStudio.SDK.Firestore {
         [Tooltip("Region for Cloud Functions. Default asia-southeast1.")]
         public string FunctionsRegion = "asia-southeast1";
 
-        [Tooltip("Enable offline persistence on the Firestore client. Recommended true.")]
-        public bool EnableOfflinePersistence = true;
+        [Tooltip("Enable offline persistence on the Firestore client. Default false — " +
+                 "the game is online-only (Phase 6 v2). Leaving the local cache off keeps " +
+                 "reads/writes authoritative against the server and avoids stale offline state.")]
+        public bool EnableOfflinePersistence = false;
 
         [Tooltip("Listener debounce window in ms. 0 = no debounce.")]
         public int ListenerDebounceMs = 500;

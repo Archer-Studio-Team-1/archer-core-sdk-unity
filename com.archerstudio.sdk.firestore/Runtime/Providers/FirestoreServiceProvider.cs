@@ -26,10 +26,11 @@ namespace ArcherStudio.SDK.Firestore {
             _config = config;
             _db = FirebaseFirestore.DefaultInstance;
             _auth = FirebaseAuth.DefaultInstance;
-            if (config.EnableOfflinePersistence) {
-                // Older Firebase SDK exposes Settings as read-only, with mutable properties.
-                _db.Settings.PersistenceEnabled = true;
-            }
+            // Online-only (Phase 6 v2): explicitly drive persistence from config.
+            // Default config.EnableOfflinePersistence == false so the local cache is
+            // off — every read/write hits the server, keeping state authoritative.
+            // Older Firebase SDK exposes Settings as read-only, with mutable properties.
+            _db.Settings.PersistenceEnabled = config.EnableOfflinePersistence;
         }
 
         public bool IsAvailable => _auth?.CurrentUser != null;
