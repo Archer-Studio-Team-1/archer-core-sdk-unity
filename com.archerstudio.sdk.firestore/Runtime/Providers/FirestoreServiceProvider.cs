@@ -21,14 +21,11 @@ namespace ArcherStudio.SDK.Firestore {
         private readonly FirebaseFirestore _db;
         private readonly FirebaseAuth _auth;
         private readonly FirestoreConfig _config;
-        // Optional functions client — populated only if Firebase.Functions package is present.
-        private readonly object _functions;
 
-        public FirestoreServiceProvider(FirestoreConfig config, object functionsInstance) {
+        public FirestoreServiceProvider(FirestoreConfig config) {
             _config = config;
             _db = FirebaseFirestore.DefaultInstance;
             _auth = FirebaseAuth.DefaultInstance;
-            _functions = functionsInstance;
             if (config.EnableOfflinePersistence) {
                 // Older Firebase SDK exposes Settings as read-only, with mutable properties.
                 _db.Settings.PersistenceEnabled = true;
@@ -86,14 +83,9 @@ namespace ArcherStudio.SDK.Firestore {
 
         public void CallFunctionAsync(string name, IReadOnlyDictionary<string, object> payload,
                                       Action<FirestoreResult<IReadOnlyDictionary<string, object>>> onComplete) {
-            // Functions support is optional. If Firebase.Functions package is not installed,
-            // the integration falls back to NotAvailable so the SDK degrades gracefully.
-            if (_functions == null) {
-                onComplete?.Invoke(FirestoreResult<IReadOnlyDictionary<string, object>>.Failed(
-                    FirestoreErrorCode.Unavailable, "Firebase.Functions package not installed"));
-                return;
-            }
-            FirebaseFunctionsBridge.CallAsync(_functions, name, _config.FunctionsRegion, payload, onComplete);
+            // Cloud Functions invoked via plain HTTPS — no Firebase.Functions Unity SDK
+            // dependency. See CallableHttpClient for wire protocol details.
+            CallableHttpClient.CallAsync(_config, name, payload, onComplete);
         }
 
         public IDisposable Listen(string path,

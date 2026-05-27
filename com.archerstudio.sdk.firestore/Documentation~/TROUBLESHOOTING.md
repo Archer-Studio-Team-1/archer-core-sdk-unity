@@ -74,14 +74,19 @@ echo of the write before the server confirms.
 
 ---
 
-### `Unavailable` on `CallFunctionAsync`
+### `Unavailable` / `NetworkError` on `CallFunctionAsync`
 
-**Cause:** `com.google.firebase.functions` package not installed (the SDK
-bridges via reflection — if the package is missing, calls fail with
-`Unavailable`).
+Callable functions are invoked through `CallableHttpClient` over plain HTTPS;
+no `com.google.firebase.functions` Unity package is involved. Common causes
+when the call fails:
 
-**Fix:** Add `com.google.firebase.functions-13.9.0.tgz` (or matching version) to
-your manifest.
+| Symptom | Likely cause | Fix |
+|---------|--------------|-----|
+| `Unavailable: Firebase project id unavailable` | `FirebaseApp.DefaultInstance.Options.ProjectId` is null | Ensure `google-services.json` is bundled and `FirebaseApp.CheckAndFixDependenciesAsync` ran |
+| `NotAuthenticated: no firebase user` | `FirebaseAuth.DefaultInstance.CurrentUser` is null | Confirm Auth completed (Editor cannot complete Auth — test on device) |
+| `NetworkError: connection error: ...` | Device offline or DNS failure | Retry; SDK does not auto-retry transport errors |
+| `NotAuthenticated: id token fetch failed` | Token refresh failed (e.g. clock skew) | Reboot device / re-sign-in |
+| HTTP 404 from `{region}-{projectId}.cloudfunctions.net/{name}` | Function not deployed in that region | Match `FirestoreConfig.FunctionsRegion` to the region the function was deployed to |
 
 ---
 

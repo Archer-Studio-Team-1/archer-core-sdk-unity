@@ -30,7 +30,9 @@ codebase.
   - `com.google.firebase.app`
   - `com.google.firebase.auth`
   - `com.google.firebase.firestore`
-  - `com.google.firebase.functions` *(optional — without it `CallFunctionAsync` returns `Unavailable`)*
+
+> Cloud Functions are invoked via plain HTTPS through `CallableHttpClient` —
+> `com.google.firebase.functions` Unity package is **not** required.
 
 ## Quick start
 

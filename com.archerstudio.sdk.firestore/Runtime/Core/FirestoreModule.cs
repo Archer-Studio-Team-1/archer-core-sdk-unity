@@ -186,8 +186,7 @@ namespace ArcherStudio.SDK.Firestore {
         }
 
         private void ProvisionProviders(FirestoreConfig config) {
-            var functionsInstance = FirebaseFunctionsBridge.GetInstance(config.FunctionsRegion);
-            Service = new FirestoreServiceProvider(config, functionsInstance);
+            Service = new FirestoreServiceProvider(config);
             UserRepository = new UserRepository(Service);
             SaveRepository = new SaveRepository(Service);
             BackupUploader = new BackupUploader(Service);
