@@ -131,6 +131,48 @@ namespace ArcherStudio.SDK.Login {
         }
 
         /// <summary>
+        /// Manual sign-in with a transient provider supplied by game code. Used when
+        /// the game ships providers the SDK can't reference directly (e.g. Facebook
+        /// Login lives in the game assembly because the Facebook Unity SDK sits under
+        /// Assets/). The transient provider replaces neither <see cref="Provider"/>
+        /// nor the silent sign-in path — it only fires ManuallyAuthenticate and
+        /// publishes the result through the SDK event bus so downstream modules
+        /// (Firestore, Tracking) see one consistent <see cref="LoginSucceededEvent"/>.
+        /// </summary>
+        public void ManualAuthenticateWith(ILoginProvider transientProvider, Action<LoginResult> onComplete = null) {
+            if (transientProvider == null) {
+                SDKLogger.Warning(Tag, "ManualAuthenticateWith called with null provider.");
+                onComplete?.Invoke(LoginResult.Failed(LoginErrorCode.NotInitialized));
+                return;
+            }
+            if (State == ModuleState.Initializing) {
+                SDKLogger.Warning(Tag, "ManualAuthenticateWith called while LoginModule still initializing.");
+                onComplete?.Invoke(LoginResult.Failed(LoginErrorCode.NotInitialized));
+                return;
+            }
+            try {
+                transientProvider.ManuallyAuthenticate(result => {
+                    try {
+                        if (result.Success) {
+                            SDKLogger.Info(Tag, $"ManualAuthenticateWith({transientProvider.ProviderType}) success. PlayerId={result.PlayerId}");
+                            SDKEventBus.Publish(new LoginSucceededEvent(
+                                result.PlayerId, result.DisplayName, transientProvider.ProviderType));
+                        } else {
+                            SDKLogger.Info(Tag, $"ManualAuthenticateWith({transientProvider.ProviderType}) failed: {result.ErrorCode}");
+                            SDKEventBus.Publish(new LoginFailedEvent(result.ErrorCode));
+                        }
+                    } catch (Exception cbEx) {
+                        SDKLogger.Error(Tag, $"ManualAuthenticateWith callback error: {cbEx.Message}");
+                    }
+                    onComplete?.Invoke(result);
+                });
+            } catch (Exception e) {
+                SDKLogger.Error(Tag, $"ManualAuthenticateWith exception: {e.Message}");
+                onComplete?.Invoke(LoginResult.Failed(LoginErrorCode.NotInitialized));
+            }
+        }
+
+        /// <summary>
         /// Alias cho SignOut — xóa state local, publish LoggedOutEvent.
         /// GPGS v2+ không có native logout; user sign-out thật qua cài đặt
         /// Google Play Games trên thiết bị.

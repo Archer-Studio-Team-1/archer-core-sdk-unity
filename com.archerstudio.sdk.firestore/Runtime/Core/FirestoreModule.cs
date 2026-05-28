@@ -102,22 +102,112 @@ namespace ArcherStudio.SDK.Firestore {
                 return;
             }
 
-            var loginModule = LoginModule.Instance;
-            if (loginModule == null || _pendingConfig == null) {
-                SDKLogger.Warning(Tag, "OnLoginSucceeded: LoginModule or pending config missing — cannot link.");
+            if (_pendingConfig == null) {
+                SDKLogger.Warning(Tag, "OnLoginSucceeded: pending config missing — cannot link.");
                 return;
             }
 
-            // Phase B slice 2 will add GoogleAccount / Facebook credential paths.
-            // For now only GooglePlayGames is wired end-to-end.
-            if (evt.ProviderType != LoginProviderType.GooglePlayGames) {
+            switch (evt.ProviderType) {
+                case LoginProviderType.GooglePlayGames:
+                    var loginModule = LoginModule.Instance;
+                    if (loginModule == null) {
+                        SDKLogger.Warning(Tag, "OnLoginSucceeded: LoginModule.Instance missing — cannot link GPGS.");
+                        return;
+                    }
+                    EnsureFirebaseAuth(loginModule, _pendingConfig, _ => { });
+                    break;
+
+                case LoginProviderType.Facebook:
+                    SignInWithFacebookCredential(_pendingConfig, _ => { });
+                    break;
+
+                case LoginProviderType.GoogleAccount:
+                    SignInWithGoogleCredential(_pendingConfig, _ => { });
+                    break;
+
+                case LoginProviderType.AppleSignIn:
+                    SDKLogger.Warning(Tag, "AppleSignIn not yet wired (deferred). Cloud sync stays gated.");
+                    break;
+
+                default:
+                    SDKLogger.Warning(Tag, $"Unknown provider {evt.ProviderType} — cloud sync stays gated.");
+                    break;
+            }
+        }
+
+        private void SignInWithFacebookCredential(FirestoreConfig config, Action<bool> onComplete) {
+            var token = ReadStaticToken(
+                "Facebook.Unity.AccessToken, Facebook.Unity",
+                staticPropertyName: "CurrentAccessToken",
+                tokenPropertyName: "TokenString");
+            if (string.IsNullOrEmpty(token)) {
                 SDKLogger.Warning(Tag,
-                    $"Provider {evt.ProviderType} is not yet supported by FirestoreModule. " +
-                    "Cloud sync stays gated until this credential path is implemented.");
+                    "Facebook AccessToken.CurrentAccessToken not available — cloud sync stays gated. " +
+                    "Provider must complete FB.LogInWithReadPermissions before publishing LoginSucceededEvent.");
+                onComplete?.Invoke(false);
                 return;
             }
+            var credential = FirebaseAuthBootstrap.BuildFacebookCredential(token);
+            if (credential == null) {
+                SDKLogger.Warning(Tag, "FacebookAuthProvider absent — cloud sync stays gated.");
+                onComplete?.Invoke(false);
+                return;
+            }
+            Firebase.Auth.FirebaseAuth.DefaultInstance.SignInWithCredentialAsync(credential)
+                .ContinueWithOnMainThread(task => OnSignInComplete(task, config, LoginProviderType.Facebook, onComplete));
+        }
 
-            EnsureFirebaseAuth(loginModule, _pendingConfig, _ => { });
+        private void SignInWithGoogleCredential(FirestoreConfig config, Action<bool> onComplete) {
+            // Google Sign-In Unity plugin exposes
+            //   GoogleSignIn.DefaultInstance.CurrentUser as GoogleSignInUser
+            // with .IdToken + .AuthCode. Read reflectively so this SDK does not
+            // require the plugin to be present at compile time.
+            var defaultInstance = ReadStaticValue("Google.GoogleSignIn, Google.SignIn", "DefaultInstance");
+            if (defaultInstance == null) {
+                SDKLogger.Warning(Tag,
+                    "Google.SignIn package not installed — cloud sync stays gated for GoogleAccount.");
+                onComplete?.Invoke(false);
+                return;
+            }
+            var user = defaultInstance.GetType().GetProperty("CurrentUser")?.GetValue(defaultInstance);
+            if (user == null) {
+                SDKLogger.Warning(Tag,
+                    "GoogleSignIn.CurrentUser is null — provider must complete SignIn() before publishing event.");
+                onComplete?.Invoke(false);
+                return;
+            }
+            var idToken = user.GetType().GetProperty("IdToken")?.GetValue(user) as string;
+            var accessToken = user.GetType().GetProperty("AuthCode")?.GetValue(user) as string;
+            if (string.IsNullOrEmpty(idToken)) {
+                SDKLogger.Warning(Tag, "GoogleSignInUser.IdToken empty — cloud sync stays gated.");
+                onComplete?.Invoke(false);
+                return;
+            }
+            var credential = FirebaseAuthBootstrap.BuildGoogleCredential(idToken, accessToken);
+            if (credential == null) {
+                SDKLogger.Warning(Tag, "GoogleAuthProvider absent — cloud sync stays gated.");
+                onComplete?.Invoke(false);
+                return;
+            }
+            Firebase.Auth.FirebaseAuth.DefaultInstance.SignInWithCredentialAsync(credential)
+                .ContinueWithOnMainThread(task => OnSignInComplete(task, config, LoginProviderType.GoogleAccount, onComplete));
+        }
+
+        private static string ReadStaticToken(string typeAssemblyQualifiedName, string staticPropertyName, string tokenPropertyName) {
+            var holder = ReadStaticValue(typeAssemblyQualifiedName, staticPropertyName);
+            if (holder == null) return null;
+            return holder.GetType().GetProperty(tokenPropertyName)?.GetValue(holder) as string;
+        }
+
+        private static object ReadStaticValue(string typeAssemblyQualifiedName, string staticMemberName) {
+            var type = System.Type.GetType(typeAssemblyQualifiedName);
+            if (type == null) return null;
+            var prop = type.GetProperty(staticMemberName,
+                System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static);
+            if (prop != null) return prop.GetValue(null);
+            var field = type.GetField(staticMemberName,
+                System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static);
+            return field?.GetValue(null);
         }
 
         private void OnLoggedOut(ArcherStudio.SDK.Login.LoggedOutEvent _) {
