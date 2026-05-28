@@ -16,7 +16,8 @@ namespace ArcherStudio.SDK.Firestore {
         public void SaveFeatureAsync(string featureName,
                                      IReadOnlyDictionary<string, object> data,
                                      int schemaVersion,
-                                     Action<FirestoreResult<bool>> onComplete) {
+                                     Action<FirestoreResult<bool>> onComplete,
+                                     int expectedVersion = -1) {
             if (string.IsNullOrEmpty(featureName)) {
                 onComplete?.Invoke(FirestoreResult<bool>.Failed(
                     FirestoreErrorCode.InvalidArgument, "featureName required"));
@@ -33,6 +34,13 @@ namespace ArcherStudio.SDK.Firestore {
                 { "data", PolymorphicJsonConverter.ToFirestoreDict((IDictionary<string, object>)data) },
                 { "updatedBy", "client" },
             };
+            // Phase D3 optimistic concurrency: when the caller knows the version
+            // it last observed, the next write must be that+1. Rules reject any
+            // write that doesn't satisfy the equality, so a client racing against
+            // another device gets PermissionDenied and can refresh + retry.
+            if (expectedVersion >= 0) {
+                payload["version"] = (long)(expectedVersion + 1);
+            }
 
             var path = $"users/{{uid}}/saves/{featureName}";
             _service.SetDocumentAsync(path, payload, onComplete);
@@ -59,6 +67,7 @@ namespace ArcherStudio.SDK.Firestore {
                         ?? new Dictionary<string, object>()),
                     UpdatedBy = r.Data.TryGet<string>("updatedBy"),
                     UpdatedAtUnixSec = ExtractTimestamp(r.Data, "updatedAt"),
+                    Version = (int)r.Data.TryGet<long>("version", 0),
                 };
                 onComplete?.Invoke(FirestoreResult<SavedFeatureSnapshot>.Succeeded(snap));
             });
@@ -76,6 +85,7 @@ namespace ArcherStudio.SDK.Firestore {
                     SchemaVersion = r.Data.SchemaVersion,
                     UpdatedBy = r.Data.UpdatedBy,
                     UpdatedAtUnixSec = r.Data.UpdatedAtUnixSec,
+                    Version = r.Data.Version,
                 }));
             });
         }
