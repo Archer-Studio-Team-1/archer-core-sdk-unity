@@ -39,6 +39,14 @@ namespace ArcherStudio.SDK.Login {
             try {
                 _provider.AuthenticateAsync(result => {
                     if (State == ModuleState.Disposed) return;
+
+                    // Flip to Ready + register Instance BEFORE publishing so
+                    // subscribers that immediately call back into LoginModule
+                    // (e.g. auto-escalating to ManualAuthenticate on silent
+                    // failure) see a fully-initialised module.
+                    State = ModuleState.Ready;
+                    Instance = this;
+
                     try {
                         if (result.Success) {
                             SDKLogger.Info(Tag, $"Signed in. PlayerId={result.PlayerId}");
@@ -52,8 +60,6 @@ namespace ArcherStudio.SDK.Login {
                     }
 
                     // CRITICAL: always complete — never block SDK init chain
-                    State = ModuleState.Ready;
-                    Instance = this;
                     onComplete?.Invoke(true);
                 });
             } catch (Exception e) {
