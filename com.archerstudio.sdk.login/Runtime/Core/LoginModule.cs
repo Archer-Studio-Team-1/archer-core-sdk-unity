@@ -42,7 +42,7 @@ namespace ArcherStudio.SDK.Login {
                     try {
                         if (result.Success) {
                             SDKLogger.Info(Tag, $"Signed in. PlayerId={result.PlayerId}");
-                            SDKEventBus.Publish(new LoginSucceededEvent(result.PlayerId, result.DisplayName));
+                            SDKEventBus.Publish(new LoginSucceededEvent(result.PlayerId, result.DisplayName, _provider.ProviderType));
                         } else {
                             SDKLogger.Info(Tag, $"Not signed in (code={result.ErrorCode}). Guest mode.");
                             SDKEventBus.Publish(new LoginFailedEvent(result.ErrorCode));
@@ -83,7 +83,7 @@ namespace ArcherStudio.SDK.Login {
                 _provider.AuthenticateAsync(result => {
                     try {
                         if (result.Success)
-                            SDKEventBus.Publish(new LoginSucceededEvent(result.PlayerId, result.DisplayName));
+                            SDKEventBus.Publish(new LoginSucceededEvent(result.PlayerId, result.DisplayName, _provider.ProviderType));
                         else
                             SDKEventBus.Publish(new LoginFailedEvent(result.ErrorCode));
                     } catch (Exception cbEx) {
@@ -116,7 +116,7 @@ namespace ArcherStudio.SDK.Login {
                 _provider.ManuallyAuthenticate(result => {
                     try {
                         if (result.Success)
-                            SDKEventBus.Publish(new LoginSucceededEvent(result.PlayerId, result.DisplayName));
+                            SDKEventBus.Publish(new LoginSucceededEvent(result.PlayerId, result.DisplayName, _provider.ProviderType));
                         else
                             SDKEventBus.Publish(new LoginFailedEvent(result.ErrorCode));
                     } catch (Exception cbEx) {

@@ -3,6 +3,13 @@ using System;
 namespace ArcherStudio.SDK.Login {
 
     public interface ILoginProvider {
+        /// <summary>
+        /// Which auth backend this provider talks to. Used by downstream modules
+        /// (e.g. Firestore) to map the signed-in user to the correct Firebase
+        /// credential and to decide whether cloud-save should engage.
+        /// </summary>
+        LoginProviderType ProviderType { get; }
+
         bool IsSignedIn { get; }
         string PlayerId { get; }
         string DisplayName { get; }

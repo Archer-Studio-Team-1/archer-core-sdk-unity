@@ -6,6 +6,8 @@ namespace ArcherStudio.SDK.Login {
     public class StubLoginProvider : ILoginProvider {
         private const string Tag = "Login-Stub";
 
+        public LoginProviderType ProviderType => LoginProviderType.None;
+
         public bool IsSignedIn { get; private set; }
         public string PlayerId { get; private set; }
         public string DisplayName { get; private set; }

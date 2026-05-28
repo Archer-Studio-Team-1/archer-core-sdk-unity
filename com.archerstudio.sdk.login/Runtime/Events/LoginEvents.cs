@@ -6,9 +6,17 @@ namespace ArcherStudio.SDK.Login {
         public string PlayerId { get; }
         public string DisplayName { get; }
 
-        public LoginSucceededEvent(string playerId, string displayName) {
+        /// <summary>
+        /// Which auth backend produced this login. Subscribers (Firestore, cloud
+        /// sync) use this to decide whether to engage real Firebase Auth linking
+        /// or treat the session as guest-only.
+        /// </summary>
+        public LoginProviderType ProviderType { get; }
+
+        public LoginSucceededEvent(string playerId, string displayName, LoginProviderType providerType) {
             PlayerId = playerId;
             DisplayName = displayName;
+            ProviderType = providerType;
         }
     }
 

@@ -33,7 +33,10 @@ namespace ArcherStudio.SDK.Firestore {
             _db.Settings.PersistenceEnabled = config.EnableOfflinePersistence;
         }
 
-        public bool IsAvailable => _auth?.CurrentUser != null;
+        // Phase 6 v2: anonymous Firebase users no longer count as available. Cloud
+        // writes only engage once a real auth provider has linked (GPGS / Google /
+        // Facebook / Apple) — guests stay local-only.
+        public bool IsAvailable => _auth?.CurrentUser != null && !_auth.CurrentUser.IsAnonymous;
         public string CurrentFirebaseUid => _auth?.CurrentUser?.UserId;
 
         public void GetDocumentAsync(string path,

@@ -28,7 +28,8 @@ namespace ArcherStudio.SDK.Login {
     public class GPGSLoginProvider : ILoginProvider {
         private const string Tag = "Login-GPGS";
 
-        
+        public LoginProviderType ProviderType => LoginProviderType.GooglePlayGames;
+
         public bool IsSignedIn { get; private set; }
         public string PlayerId { get; private set; }
         public string DisplayName { get; private set; }

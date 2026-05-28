@@ -32,6 +32,19 @@ namespace ArcherStudio.SDK.Firestore {
         public IIapCatalogService IapCatalog { get; private set; }
         public FeatureRegistry Features { get; private set; }
 
+        /// <summary>
+        /// True only when a real auth provider (GPGS / Google / Facebook / Apple)
+        /// has linked into Firebase Auth — i.e. cloud-save is eligible. Phase 6 v2
+        /// drops the anonymous fallback, so this is the canonical gate downstream
+        /// (LiveSync, restore service) checks before any Firestore write.
+        /// </summary>
+        public bool IsAuthenticatedWithProvider =>
+            Service != null
+            && Service.IsAvailable
+            && _linkedProvider != LoginProviderType.None;
+
+        private LoginProviderType _linkedProvider = LoginProviderType.None;
+
         public void InitializeAsync(SDKCoreConfig coreConfig, Action<bool> onComplete) {
             State = ModuleState.Initializing;
             Instance = this;
@@ -45,16 +58,14 @@ namespace ArcherStudio.SDK.Firestore {
             }
 
 #if HAS_FIREBASE_FIRESTORE && HAS_FIREBASE_AUTH
-            // Firebase Auth is independent of GPGS Login. Even if Login hasn't
-            // signed in (Editor, no Play Services, or user not tapped social
-            // sign-in), we can still establish an anonymous Firebase Auth session
-            // so Firestore reads/writes work end-to-end. When Login completes
-            // later, we link the anonymous account to the social credential.
+            // Phase 6 v2: no anonymous fallback. If Login already has a real
+            // provider signed in, EnsureFirebaseAuth links it now; otherwise
+            // cloud sync stays gated until LoginSucceededEvent fires.
             var loginModule = LoginModule.Instance;
             EnsureFirebaseAuth(loginModule, config, onComplete);
 
-            // Also subscribe to LoginSucceededEvent so an in-session sign-in
-            // upgrades the anonymous account to a social-linked one.
+            // Persist the config + subscribe so in-session logins can drive
+            // the credential link without rerunning the whole init path.
             SubscribeToLogin(config, _ => { });
 #else
             SDKLogger.Warning(Tag, "Firebase.Firestore/Auth not present. Using stub.");
@@ -75,22 +86,48 @@ namespace ArcherStudio.SDK.Firestore {
             if (!_waitingForLogin) {
                 _waitingForLogin = true;
                 ArcherStudio.SDK.Core.SDKEventBus.Subscribe<ArcherStudio.SDK.Login.LoginSucceededEvent>(OnLoginSucceeded);
-                SDKLogger.Info(Tag, "Subscribed to LoginSucceededEvent — will upgrade to Firebase Auth when login completes.");
+                ArcherStudio.SDK.Core.SDKEventBus.Subscribe<ArcherStudio.SDK.Login.LoggedOutEvent>(OnLoggedOut);
+                SDKLogger.Info(Tag, "Subscribed to LoginSucceededEvent/LoggedOutEvent — Firebase Auth linking is gated on these.");
             }
             CompleteInit(onComplete, success: true);
         }
 
         private void OnLoginSucceeded(ArcherStudio.SDK.Login.LoginSucceededEvent evt) {
-            SDKLogger.Info(Tag, $"LoginSucceededEvent received (playerId={evt.PlayerId}). Upgrading from stub to real provider.");
-            var loginModule = LoginModule.Instance;
-            if (loginModule == null || _pendingConfig == null) {
-                SDKLogger.Warning(Tag, "OnLoginSucceeded: LoginModule or pending config missing — staying on stub.");
+            SDKLogger.Info(Tag,
+                $"LoginSucceededEvent received (playerId={evt.PlayerId}, provider={evt.ProviderType}). " +
+                "Linking into Firebase Auth.");
+
+            if (evt.ProviderType == LoginProviderType.None) {
+                SDKLogger.Warning(Tag, "OnLoginSucceeded with ProviderType=None — ignoring (stub provider).");
                 return;
             }
-            // Re-run the auth handshake. EnsureFirebaseAuth handles the "already
-            // signed in" fast path which is the common case when CloudSave's
-            // sign-in completed before this event arrived.
+
+            var loginModule = LoginModule.Instance;
+            if (loginModule == null || _pendingConfig == null) {
+                SDKLogger.Warning(Tag, "OnLoginSucceeded: LoginModule or pending config missing — cannot link.");
+                return;
+            }
+
+            // Phase B slice 2 will add GoogleAccount / Facebook credential paths.
+            // For now only GooglePlayGames is wired end-to-end.
+            if (evt.ProviderType != LoginProviderType.GooglePlayGames) {
+                SDKLogger.Warning(Tag,
+                    $"Provider {evt.ProviderType} is not yet supported by FirestoreModule. " +
+                    "Cloud sync stays gated until this credential path is implemented.");
+                return;
+            }
+
             EnsureFirebaseAuth(loginModule, _pendingConfig, _ => { });
+        }
+
+        private void OnLoggedOut(ArcherStudio.SDK.Login.LoggedOutEvent _) {
+            SDKLogger.Info(Tag, "LoggedOutEvent received — clearing Firebase Auth session and gating cloud sync.");
+            _linkedProvider = LoginProviderType.None;
+            try {
+                Firebase.Auth.FirebaseAuth.DefaultInstance.SignOut();
+            } catch (Exception e) {
+                SDKLogger.Warning(Tag, $"FirebaseAuth.SignOut threw: {e.Message}");
+            }
         }
 
         private void EnsureFirebaseAuth(LoginModule loginModule, FirestoreConfig config, Action<bool> onComplete) {
@@ -115,56 +152,83 @@ namespace ArcherStudio.SDK.Firestore {
         }
 
         private void ContinueEnsureFirebaseAuth(LoginModule loginModule, FirestoreConfig config, Action<bool> onComplete) {
-            var existingUid = Firebase.Auth.FirebaseAuth.DefaultInstance.CurrentUser?.UserId;
-            if (!string.IsNullOrEmpty(existingUid)) {
-                SDKLogger.Info(Tag, $"Firebase Auth already established. UID={existingUid}");
+            // Phase 6 v2: no anonymous fallback. Cloud sync stays gated until a
+            // real provider (GPGS / Google / Facebook / Apple) is linked into
+            // Firebase Auth. The module still completes init so the rest of the
+            // SDK boot chain proceeds — IsAuthenticatedWithProvider is the gate.
+
+            var existingUser = Firebase.Auth.FirebaseAuth.DefaultInstance.CurrentUser;
+            if (existingUser != null) {
+                if (existingUser.IsAnonymous) {
+                    // Leftover from a previous build that used anonymous fallback.
+                    // Sign out so we don't write to a guest UID that no one can
+                    // reach again. The user must log in to engage cloud save.
+                    SDKLogger.Info(Tag,
+                        $"Existing Firebase user is anonymous (UID={existingUser.UserId}). " +
+                        "Signing out — Phase 6 v2 requires a real provider.");
+                    Firebase.Auth.FirebaseAuth.DefaultInstance.SignOut();
+                } else {
+                    SDKLogger.Info(Tag, $"Firebase Auth already linked. UID={existingUser.UserId}");
+                    ProvisionProviders(config);
+                    // We don't know which provider linked previously without
+                    // inspecting ProviderData; assume GPGS for now (only path wired).
+                    _linkedProvider = LoginProviderType.GooglePlayGames;
+                    CompleteInit(onComplete, success: true);
+                    return;
+                }
+            }
+
+            if (loginModule == null || loginModule.Provider == null || !loginModule.Provider.IsSignedIn) {
+                SDKLogger.Info(Tag,
+                    "No provider signed in. Cloud sync gated — waiting for LoginSucceededEvent.");
                 ProvisionProviders(config);
                 CompleteInit(onComplete, success: true);
                 return;
             }
 
-            // No GPGS Login available (Editor without Play Services, user not yet
-            // signed in via social). Go straight to anonymous Firebase Auth so
-            // Firestore works immediately. LoginSucceededEvent handler will
-            // upgrade to a linked credential when GPGS signs in later.
-            if (loginModule == null || loginModule.Provider == null || !loginModule.Provider.IsSignedIn) {
-                SDKLogger.Info(Tag, "Login not signed in — signing into Firebase Auth anonymously.");
-                Firebase.Auth.FirebaseAuth.DefaultInstance.SignInAnonymouslyAsync()
-                    .ContinueWithOnMainThread(task => OnSignInComplete(task, config, onComplete));
+            var providerType = loginModule.Provider.ProviderType;
+            if (providerType != LoginProviderType.GooglePlayGames) {
+                SDKLogger.Warning(Tag,
+                    $"Provider {providerType} is not yet wired into FirestoreModule. " +
+                    "Cloud sync gated until its credential path lands (Phase B slice 2).");
+                ProvisionProviders(config);
+                CompleteInit(onComplete, success: true);
                 return;
             }
 
-            // Bootstrap Firebase Auth via GPGS server auth code (same flow as CloudSave).
-            // If GPGS can't produce a code (Editor, no Play Services, user declined,
-            // signed-in but offline), fall back to anonymous sign-in so cloud sync still
-            // works. Anonymous accounts can be upgraded later via LinkWithCredential.
             loginModule.Provider.GetServerSideAccessCode(config.WebClientId, serverAuthCode => {
                 if (string.IsNullOrEmpty(serverAuthCode)) {
-                    SDKLogger.Warning(Tag, "No GPGS server auth code — signing into Firebase Auth anonymously.");
-                    Firebase.Auth.FirebaseAuth.DefaultInstance.SignInAnonymouslyAsync()
-                        .ContinueWithOnMainThread(task => OnSignInComplete(task, config, onComplete));
+                    SDKLogger.Warning(Tag,
+                        "No GPGS server auth code — cloud sync gated until next login attempt.");
+                    ProvisionProviders(config);
+                    CompleteInit(onComplete, success: true);
                     return;
                 }
 
-                // Try Play Games credential first; if package absent, fall back to anonymous.
-                // Different Firebase Unity SDK versions return different result types
-                // (AuthResult in v11+, FirebaseUser in earlier). Handle both via dynamic.
                 var credential = FirebaseAuthBootstrap.BuildPlayGamesCredential(serverAuthCode);
-                if (credential != null) {
-                    Firebase.Auth.FirebaseAuth.DefaultInstance.SignInWithCredentialAsync(credential)
-                        .ContinueWithOnMainThread(task => OnSignInComplete(task, config, onComplete));
-                } else {
-                    Firebase.Auth.FirebaseAuth.DefaultInstance.SignInAnonymouslyAsync()
-                        .ContinueWithOnMainThread(task => OnSignInComplete(task, config, onComplete));
+                if (credential == null) {
+                    SDKLogger.Warning(Tag,
+                        "PlayGamesAuthProvider absent — cannot build credential. Cloud sync gated.");
+                    ProvisionProviders(config);
+                    CompleteInit(onComplete, success: true);
+                    return;
                 }
+
+                Firebase.Auth.FirebaseAuth.DefaultInstance.SignInWithCredentialAsync(credential)
+                    .ContinueWithOnMainThread(task => OnSignInComplete(task, config, providerType, onComplete));
             });
         }
 
         private void OnSignInComplete(System.Threading.Tasks.Task task,
-                                      FirestoreConfig config, Action<bool> onComplete) {
+                                      FirestoreConfig config,
+                                      LoginProviderType providerType,
+                                      Action<bool> onComplete) {
             if (task.IsFaulted || task.IsCanceled) {
                 SDKLogger.Error(Tag, $"Firebase Auth sign-in failed: {task.Exception?.Message}");
-                UseStub(config);
+                // Phase 6 v2: do NOT fall back to stub on sign-in failure. Keep
+                // the real providers wired so a retry (next LoginSucceededEvent)
+                // can complete the link. Cloud sync stays gated meanwhile.
+                ProvisionProviders(config);
                 CompleteInit(onComplete, success: true);
                 return;
             }
@@ -180,7 +244,8 @@ namespace ArcherStudio.SDK.Firestore {
                 uid = userVal?.UserId;
             }
             uid = uid ?? Firebase.Auth.FirebaseAuth.DefaultInstance.CurrentUser?.UserId;
-            SDKLogger.Info(Tag, $"Firebase Auth ready. UID={uid}");
+            SDKLogger.Info(Tag, $"Firebase Auth ready. UID={uid}, provider={providerType}");
+            _linkedProvider = providerType;
             ProvisionProviders(config);
             CompleteInit(onComplete, success: true);
         }
@@ -220,6 +285,11 @@ namespace ArcherStudio.SDK.Firestore {
             UserRepository = null;
             IapCatalog = null;
             Features = null;
+#if HAS_FIREBASE_FIRESTORE && HAS_FIREBASE_AUTH
+            _linkedProvider = LoginProviderType.None;
+            _waitingForLogin = false;
+            _pendingConfig = null;
+#endif
         }
     }
 }
