@@ -74,7 +74,8 @@ namespace ArcherStudio.SDK.Firestore {
                 return;
             }
             if (_config.VerboseLogging) SDKLogger.Info(Tag, $"SetDocumentAsync {resolved}");
-            _db.Document(resolved).SetAsync((IDictionary<string, object>)data, SetOptions.MergeAll)
+            var writeData = ApplyServerTimestampSentinels(data);
+            _db.Document(resolved).SetAsync(writeData, SetOptions.MergeAll)
                 .ContinueWithOnMainThread(task => {
                     if (task.IsFaulted) {
                         onComplete?.Invoke(FirestoreResult<bool>.Failed(
@@ -83,6 +84,33 @@ namespace ArcherStudio.SDK.Firestore {
                     }
                     onComplete?.Invoke(FirestoreResult<bool>.Succeeded(true));
                 });
+        }
+
+        /// <summary>
+        /// Replace any top-level <see cref="SaveRepository.ServerTimestampSentinel"/>
+        /// value with a real Firestore server timestamp. Returns the original dict
+        /// untouched (as IDictionary) when no sentinel is present, so non-save writes
+        /// (e.g. session heartbeat with strict per-field rules) are unaffected.
+        /// </summary>
+        private static IDictionary<string, object> ApplyServerTimestampSentinels(
+            IReadOnlyDictionary<string, object> data) {
+            var dict = (IDictionary<string, object>)data;
+            var hasSentinel = false;
+            foreach (var kvp in data) {
+                if (kvp.Value is string s && s == SaveRepository.ServerTimestampSentinel) {
+                    hasSentinel = true;
+                    break;
+                }
+            }
+            if (!hasSentinel) return dict;
+
+            var copy = new Dictionary<string, object>(dict);
+            foreach (var key in new List<string>(copy.Keys)) {
+                if (copy[key] is string s && s == SaveRepository.ServerTimestampSentinel) {
+                    copy[key] = FieldValue.ServerTimestamp;
+                }
+            }
+            return copy;
         }
 
         public void CallFunctionAsync(string name, IReadOnlyDictionary<string, object> payload,

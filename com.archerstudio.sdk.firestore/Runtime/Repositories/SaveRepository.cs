@@ -7,6 +7,15 @@ namespace ArcherStudio.SDK.Firestore {
 
         private const string Tag = "Firestore";
 
+        /// <summary>
+        /// Marker value the provider replaces with a Firestore server timestamp
+        /// (FieldValue.ServerTimestamp) at write time. Lets this transport-agnostic
+        /// repository request a server timestamp without referencing Firebase types.
+        /// Scoped to the save payload only, so docs with strict per-field rules
+        /// (e.g. session heartbeat) are unaffected.
+        /// </summary>
+        public const string ServerTimestampSentinel = "__sdk_server_timestamp__";
+
         private readonly IFirestoreService _service;
 
         public SaveRepository(IFirestoreService service) {
@@ -33,6 +42,11 @@ namespace ArcherStudio.SDK.Firestore {
                 { "schemaVersion", (long)schemaVersion },
                 { "data", PolymorphicJsonConverter.ToFirestoreDict((IDictionary<string, object>)data) },
                 { "updatedBy", "client" },
+                // Server-stamped last-save time. The provider swaps this sentinel for
+                // FieldValue.ServerTimestamp; readers (conflict resolver) surface it as
+                // "last saved on cloud". saves/{feature} rules don't whitelist keys, so
+                // the extra field is accepted.
+                { "updatedAt", ServerTimestampSentinel },
             };
             // Phase D3 optimistic concurrency: when the caller knows the version
             // it last observed, the next write must be that+1. Rules reject any
