@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using ArcherStudio.SDK.Core;
 
 namespace ArcherStudio.SDK.Firestore {
 
@@ -106,9 +107,39 @@ namespace ArcherStudio.SDK.Firestore {
 
         private static long ExtractTimestamp(IReadOnlyDictionary<string, object> data, string key) {
             if (data == null || !data.TryGetValue(key, out var v) || v == null) return 0;
-            // Firestore returns Timestamp as a wrapped struct; reflection extracts seconds.
-            var sec = v.GetType().GetProperty("Seconds")?.GetValue(v);
-            return sec is long s ? s : 0;
+            switch (v) {
+                case long l:  return NormalizeEpochToSeconds(l);
+                case int i:   return i;
+                case double d: return NormalizeEpochToSeconds((long)d);
+                case float f:  return NormalizeEpochToSeconds((long)f);
+                case string str: return long.TryParse(str, out var p) ? NormalizeEpochToSeconds(p) : 0;
+                case DateTime dt: return new DateTimeOffset(dt.ToUniversalTime()).ToUnixTimeSeconds();
+                case DateTimeOffset dto: return dto.ToUnixTimeSeconds();
+            }
+            // Firebase.Firestore.Timestamp is a wrapped struct that exposes
+            // ToDateTimeOffset()/ToDateTime() — NOT a public Seconds property. The old
+            // "Seconds" reflection therefore always returned 0, so every reader of
+            // UpdatedAtUnixSec saw an epoch of 0 ("unknown save time"). Prefer the real
+            // API via reflection (keeps this repository transport-agnostic), falling
+            // back to a Seconds property only if a future SDK adds one.
+            var t = v.GetType();
+            try {
+                var toDto = t.GetMethod("ToDateTimeOffset", Type.EmptyTypes);
+                if (toDto != null && toDto.Invoke(v, null) is DateTimeOffset off)
+                    return off.ToUnixTimeSeconds();
+                var toDt = t.GetMethod("ToDateTime", Type.EmptyTypes);
+                if (toDt != null && toDt.Invoke(v, null) is DateTime dtv)
+                    return new DateTimeOffset(dtv.ToUniversalTime()).ToUnixTimeSeconds();
+            } catch (Exception e) {
+                SDKLogger.Warning(Tag, $"ExtractTimestamp: Timestamp reflection threw: {e.Message}");
+            }
+            var secProp = t.GetProperty("Seconds");
+            if (secProp != null && secProp.GetValue(v) is long sec) return NormalizeEpochToSeconds(sec);
+            return 0;
         }
+
+        /// <summary>Treat values that look like milliseconds (≥ 1e12) as ms and fold to seconds.</summary>
+        private static long NormalizeEpochToSeconds(long value) =>
+            value >= 1_000_000_000_000L ? value / 1000L : value;
     }
 }
