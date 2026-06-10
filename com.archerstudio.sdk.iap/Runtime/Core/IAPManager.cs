@@ -209,7 +209,51 @@ namespace ArcherStudio.SDK.IAP {
                 $"txn={transactionId ?? "<null>"}, " +
                 $"purchaseToken={(string.IsNullOrEmpty(purchaseToken) ? "<missing>" : purchaseToken.Substring(0, Math.Min(8, purchaseToken.Length)) + "…")}");
 
+            // Capture the previously-cached transactionId BEFORE overwriting it so we
+            // can tell whether this observation is a brand-new order (a renewal).
+            // Google issues a new orderId every billing period while reusing the
+            // purchaseToken, so a changed transactionId means the subscription renewed.
+            var canonicalId = _provider?.ResolveProductId(productId) ?? productId;
+            string previousTransactionId = null;
+            if (_subscriptionTokens.TryGetValue(canonicalId, out var existingEntry))
+                previousTransactionId = existingEntry.transactionId;
+
             CacheSubscriptionToken(productId, purchaseToken, transactionId);
+
+            // ── Record auto-renewals server-side ──
+            // Auto-renewals are observed here (via FetchPurchases), NOT through the
+            // user-initiated Purchase() → Validate() path. Without re-validating, a
+            // renewal is never sent to the server, so no new iap_transactions doc is
+            // written and the server-side VIP expiry is never extended (the renewed
+            // subscription then looks expired on the backend / on other devices and
+            // the daily expiry cron downgrades VIP — the auto-renew bug).
+            //
+            // Trigger validation only when we observe a NEW orderId. The server
+            // deduplicates by orderId, so re-validating within the same billing
+            // period is a safe no-op (no double grant).
+            bool isNewOrder = !string.IsNullOrEmpty(transactionId)
+                              && transactionId != previousTransactionId;
+            if (isNewOrder && _serverValidationEnabled && _receiptValidator != null
+                && !string.IsNullOrEmpty(receipt)) {
+                SDKLogger.Info(Tag,
+                    $"New subscription order observed for {productId} (txn {transactionId}) — " +
+                    "validating server-side to record renewal.");
+                _receiptValidator.Validate(receipt, productId, validation => {
+                    if (validation.IsValid) {
+                        SDKLogger.Info(Tag, $"Subscription renewal recorded server-side for {productId}.");
+                        // Nudge listeners again now that the server has recorded the
+                        // renewal and extended the expiry, so the game re-queries and
+                        // picks up the new ExpirationDate.
+                        OnSubscriptionStateChanged?.Invoke(productId, true);
+                    } else if (validation.IsRetryable) {
+                        SDKLogger.Warning(Tag,
+                            $"Renewal validation deferred (retryable) for {productId}: {validation.ErrorMessage}");
+                    } else {
+                        SDKLogger.Warning(Tag,
+                            $"Renewal validation rejected for {productId}: {validation.ErrorMessage}");
+                    }
+                });
+            }
         }
 
         private void OnProviderSubscriptionStateChanged(string productId, bool isActive) {
