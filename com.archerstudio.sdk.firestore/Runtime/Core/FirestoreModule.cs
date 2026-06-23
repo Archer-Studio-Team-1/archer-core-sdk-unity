@@ -250,13 +250,21 @@ namespace ArcherStudio.SDK.Firestore {
             var existingUser = Firebase.Auth.FirebaseAuth.DefaultInstance.CurrentUser;
             if (existingUser != null) {
                 if (existingUser.IsAnonymous) {
-                    // Leftover from a previous build that used anonymous fallback.
-                    // Sign out so we don't write to a guest UID that no one can
-                    // reach again. The user must log in to engage cloud save.
+                    // Legacy anonymous user (no longer minted — guests now use device-keyed custom
+                    // tokens, uid `guest_<deviceId>`). Sign out the orphan so it doesn't linger.
                     SDKLogger.Info(Tag,
                         $"Existing Firebase user is anonymous (UID={existingUser.UserId}). " +
-                        "Signing out — Phase 6 v2 requires a real provider.");
+                        "Signing out leftover guest — Phase 6 v2 requires a real provider for cloud-save.");
                     Firebase.Auth.FirebaseAuth.DefaultInstance.SignOut();
+                } else if (existingUser.UserId != null && existingUser.UserId.StartsWith("guest_")) {
+                    // Device-keyed guest (custom token). Authenticated but NOT a cloud-save provider:
+                    // keep it signed in as the stable leaderboard identity, but do NOT set
+                    // _linkedProvider so cloud-save stays gated (IsAuthenticatedWithProvider requires
+                    // a real provider). The leaderboard reads this uid via the SDK Service directly.
+                    SDKLogger.Info(Tag,
+                        $"Guest custom-token user (UID={existingUser.UserId}). " +
+                        "Keeping as leaderboard identity; cloud-save gated on a real provider.");
+                    // fall through to the no-provider gated path below.
                 } else {
                     SDKLogger.Info(Tag, $"Firebase Auth already linked. UID={existingUser.UserId}");
                     ProvisionProviders(config);
