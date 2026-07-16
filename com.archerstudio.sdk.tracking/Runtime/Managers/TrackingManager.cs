@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using ArcherStudio.SDK.Core;
 using ArcherStudio.SDK.Tracking.Events;
@@ -66,6 +67,8 @@ namespace ArcherStudio.SDK.Tracking {
                 if (_currentUserProfile != null) {
                     IdentifyUser(_currentUserProfile);
                 }
+
+                StartCoroutine(ResolveAdjustIdWithRetry());
 
                 // Subscribe to future consent changes
                 SDKEventBus.Subscribe<ConsentChangedEvent>(OnConsentEvent);
@@ -316,6 +319,35 @@ namespace ArcherStudio.SDK.Tracking {
                 }
             }
             return null;
+        }
+
+        // ─── ID Resolution Retry (network-gated IDs) ───
+        // Backoff: 1,2,4,8,16s — dừng khi có ADID hoặc hết attempts.
+        private static readonly float[] IdRetryBackoff = { 1f, 2f, 4f, 8f, 16f };
+
+        private System.Collections.IEnumerator ResolveAdjustIdWithRetry() {
+            var adjust = GetAdjustProvider();
+            if (adjust == null) yield break;
+
+            for (int attempt = 0; attempt < IdRetryBackoff.Length; attempt++) {
+                if (!string.IsNullOrEmpty(_currentUserProfile?.AdjustId)) yield break; // đã có
+
+                bool done = false;
+                string resolved = null;
+                adjust.GetAdid(id => { resolved = id; done = true; });
+
+                float waited = 0f;
+                while (!done && waited < 2f) { waited += Time.unscaledDeltaTime; yield return null; }
+
+                if (!string.IsNullOrEmpty(resolved)) {
+                    UpdateUserProfile(p => p.AdjustId = resolved);
+                    SDKLogger.Info(Tag, $"ADID resolved on retry #{attempt}: {resolved}");
+                    yield break;
+                }
+
+                yield return new WaitForSeconds(IdRetryBackoff[attempt]);
+            }
+            SDKLogger.Warning(Tag, "ADID unresolved after all retries (offline?). Persist sẽ apply lần sau.");
         }
 
         // ─── User Profile ───

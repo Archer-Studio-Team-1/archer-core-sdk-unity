@@ -218,8 +218,12 @@ namespace ArcherStudio.SDK.Tracking {
             }
 
             Adjust.GetAdid(id => {
-                TrackingManager.Instance?.UpdateUserProfile(p => { p.AdjustId = id ?? "Null"; });
-                SDKLogger.Info("Adjust", $"  ADID: {id ?? "(null)"}");
+                if (!string.IsNullOrEmpty(id)) {
+                    TrackingManager.Instance?.UpdateUserProfile(p => { p.AdjustId = id; });
+                    SDKLogger.Info("Adjust", $"  ADID: {id}");
+                } else {
+                    SDKLogger.Warning("Adjust", "  ADID null on session success — retry coroutine sẽ xử lý.");
+                }
             });
 
             Adjust.GetSdkVersion(ver => {
