@@ -17,6 +17,8 @@ namespace ArcherStudio.SDK.Tracking {
         private string _adjustId = "";
         private string _deviceId = "";
         private string _firebaseStorageId = "";
+        private string _firebaseAppInstanceId = "";
+        private string _loginId = "";
         private string _currentTask = "";
         private string _currentStage = "";
         private int _progressStage;
@@ -41,6 +43,16 @@ namespace ArcherStudio.SDK.Tracking {
         public string FirebaseStorageId {
             get => _firebaseStorageId;
             set { if (_firebaseStorageId != value) { _firebaseStorageId = value; Notify(TrackingConstants.UP_FIREBASE_STORAGE_ID, value); } }
+        }
+
+        public string FirebaseAppInstanceId {
+            get => _firebaseAppInstanceId;
+            set { if (_firebaseAppInstanceId != value) { _firebaseAppInstanceId = value; Notify(TrackingConstants.UP_FIREBASE_APP_INSTANCE_ID, value); } }
+        }
+
+        public string LoginId {
+            get => _loginId;
+            set { if (_loginId != value) { _loginId = value; Notify(TrackingConstants.UP_LOGIN_ID, value); } }
         }
 
         public string CurrentTask {
@@ -97,6 +109,8 @@ namespace ArcherStudio.SDK.Tracking {
                 case TrackingConstants.UP_ADJUST_ID: AdjustId = value; return true;
                 case TrackingConstants.UP_DEVICE_ID: DeviceId = value; return true;
                 case TrackingConstants.UP_FIREBASE_STORAGE_ID: FirebaseStorageId = value; return true;
+                case TrackingConstants.UP_FIREBASE_APP_INSTANCE_ID: FirebaseAppInstanceId = value; return true;
+                case TrackingConstants.UP_LOGIN_ID: LoginId = value; return true;
                 case TrackingConstants.UP_CURRENT_TASK: CurrentTask = value; return true;
                 case TrackingConstants.UP_CURRENT_STAGE: CurrentStage = value; return true;
                 case TrackingConstants.UP_PROGRESS_STAGE:
@@ -114,15 +128,20 @@ namespace ArcherStudio.SDK.Tracking {
             var dict = new Dictionary<string, string>();
 
             string NullIfEmpty(string s) => string.IsNullOrEmpty(s) ? "Null" : s;
+            void AddIfSet(string key, string val) { if (!string.IsNullOrEmpty(val)) dict[key] = val; }
 
-            // Base properties
-            dict[TrackingConstants.UP_ADJUST_ID] = NullIfEmpty(AdjustId);
+            // Canonical + game props: giữ sentinel "Null" (backward-compat)
             dict[TrackingConstants.UP_DEVICE_ID] = NullIfEmpty(DeviceId);
-            dict[TrackingConstants.UP_FIREBASE_STORAGE_ID] = NullIfEmpty(FirebaseStorageId);
             dict[TrackingConstants.UP_CURRENT_TASK] = NullIfEmpty(CurrentTask);
             dict[TrackingConstants.UP_CURRENT_STAGE] = NullIfEmpty(CurrentStage);
             dict[TrackingConstants.UP_PROGRESS_STAGE] = ProgressStage.ToString();
             dict[TrackingConstants.UP_CURRENT_GEM] = CurrentGem.ToString("F0");
+
+            // Link IDs: skip-empty — KHÔNG push "Null"
+            AddIfSet(TrackingConstants.UP_ADJUST_ID, AdjustId);
+            AddIfSet(TrackingConstants.UP_FIREBASE_STORAGE_ID, FirebaseStorageId);
+            AddIfSet(TrackingConstants.UP_FIREBASE_APP_INSTANCE_ID, FirebaseAppInstanceId);
+            AddIfSet(TrackingConstants.UP_LOGIN_ID, LoginId);
 
             // Custom properties (game-specific)
             foreach (var kv in _customProperties) {

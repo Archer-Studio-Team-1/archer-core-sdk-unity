@@ -124,6 +124,8 @@ namespace ArcherStudio.SDK.Tracking {
         public const string UP_ADJUST_ID = "adjust_id";
         public const string UP_DEVICE_ID = "device_id";
         public const string UP_FIREBASE_STORAGE_ID = "firebase_storage_id";
+        public const string UP_FIREBASE_APP_INSTANCE_ID = "firebase_app_instance_id";
+        public const string UP_LOGIN_ID = "login_id";
         public const string UP_CURRENT_TASK = "current_task";
         public const string UP_CURRENT_STAGE = "current_stage";
         public const string UP_PROGRESS_STAGE = "progress_stage";
