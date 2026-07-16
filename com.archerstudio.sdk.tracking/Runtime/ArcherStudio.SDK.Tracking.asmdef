@@ -4,6 +4,7 @@
   "references": [
     "ArcherStudio.SDK.Core",
     "ArcherStudio.SDK.Consent",
+    "ArcherStudio.SDK.Login",
     "AdjustSdk.Scripts"
   ],
   "includePlatforms": [],

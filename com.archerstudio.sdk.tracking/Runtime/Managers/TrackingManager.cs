@@ -73,6 +73,7 @@ namespace ArcherStudio.SDK.Tracking {
 
                 // Subscribe to future consent changes
                 SDKEventBus.Subscribe<ConsentChangedEvent>(OnConsentEvent);
+                SDKEventBus.Subscribe<ArcherStudio.SDK.Login.LoginSucceededEvent>(OnLoginSucceeded);
 
                 State = ModuleState.Ready;
                 SDKLogger.Info(Tag, "TrackingManager initialized.");
@@ -89,6 +90,7 @@ namespace ArcherStudio.SDK.Tracking {
 
         public void Dispose() {
             SDKEventBus.Unsubscribe<ConsentChangedEvent>(OnConsentEvent);
+            SDKEventBus.Unsubscribe<ArcherStudio.SDK.Login.LoginSucceededEvent>(OnLoginSucceeded);
             State = ModuleState.Disposed;
         }
 
@@ -437,6 +439,12 @@ namespace ArcherStudio.SDK.Tracking {
 
         private void OnConsentEvent(ConsentChangedEvent e) {
             OnConsentChanged(e.Status);
+        }
+
+        private void OnLoginSucceeded(ArcherStudio.SDK.Login.LoginSucceededEvent e) {
+            if (string.IsNullOrEmpty(e.PlayerId)) return;
+            UpdateUserProfile(p => p.LoginId = e.PlayerId);
+            SDKLogger.Info(Tag, $"login_id set from GPGS: {e.PlayerId}");
         }
 
         private void OnUserProfilePropertyChanged(string key, string value) {
