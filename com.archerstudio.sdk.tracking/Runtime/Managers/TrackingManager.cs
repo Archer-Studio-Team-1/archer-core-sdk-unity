@@ -44,6 +44,13 @@ namespace ArcherStudio.SDK.Tracking {
             UserProfile.PersistentDataPath = Application.persistentDataPath;
             _currentUserProfile = UserProfile.Load();
 
+            // Fresh install: Load() returns a new UserProfile with empty DeviceId
+            // (no file on disk yet, so the backfill inside Load() never runs).
+            // Safe to read SystemInfo here — InitializeAsync runs on the main thread.
+            if (string.IsNullOrEmpty(_currentUserProfile.DeviceId)) {
+                _currentUserProfile.DeviceId = SystemInfo.deviceUniqueIdentifier;
+            }
+
             LogTrackingConfig();
 
             // Read current consent from ConsentManager BEFORE provider init.
@@ -196,7 +203,7 @@ namespace ArcherStudio.SDK.Tracking {
                         SDKLogger.Error(Tag, "TrackingConfig is null. Cannot create AdjustTrackingProvider.");
                         return null;
                     }
-                    return new AdjustTrackingProvider(_config, _currentConsent);
+                    return new AdjustTrackingProvider(_config, _currentConsent, _currentUserProfile?.DeviceId);
                 default:
                     SDKLogger.Warning(Tag, $"Unknown provider type: {type}");
                     return null;

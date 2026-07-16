@@ -24,14 +24,16 @@ namespace ArcherStudio.SDK.Tracking {
         private Core.ConsentStatus _pendingMeasurementConsent;
         private readonly TrackingConfig _config;
         private readonly Core.ConsentStatus _initialConsent;
+        private readonly string _deviceId;
 
         // Optimization: Reuse dictionary
         private readonly Dictionary<string, object> _cachedParams = new Dictionary<string, object>(20);
 
-        public AdjustTrackingProvider(TrackingConfig config, Core.ConsentStatus initialConsent) {
+        public AdjustTrackingProvider(TrackingConfig config, Core.ConsentStatus initialConsent, string deviceId) {
             _config = config;
             _initialConsent = initialConsent;
             _pendingMeasurementConsent = initialConsent;
+            _deviceId = deviceId;
         }
 
         public void Initialize(Action<bool> onInitialized = null) {
@@ -169,6 +171,16 @@ namespace ArcherStudio.SDK.Tracking {
             // Adjust sends install event immediately on InitSdk().
             // TrackThirdPartySharing must be called first so DMA params
             // are included in the install request.
+            // ─── CRITICAL: user_id partner param BEFORE InitSdk ───
+            // Install event bắn ngay khi InitSdk() → user_id phải add trước.
+            // Key "user_id" khớp SetUserId() → install + event sau share 1 param, cùng giá trị DeviceId.
+            if (!string.IsNullOrEmpty(_deviceId)) {
+                Adjust.AddGlobalPartnerParameter("user_id", _deviceId);
+                SDKLogger.Info("Adjust", $"  user_id partner param set pre-init: {_deviceId}");
+            } else {
+                SDKLogger.Warning("Adjust", "  user_id skipped — deviceId empty pre-init.");
+            }
+
             ApplyConsentBeforeInit(_initialConsent);
 
             SDKLogger.Info("Adjust", "  Calling Adjust.InitSdk()...");
