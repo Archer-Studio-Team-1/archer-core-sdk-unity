@@ -192,5 +192,27 @@ namespace ArcherStudio.SDK.Tracking {
             }
             #endif
         }
+
+        /// <summary>
+        /// Lấy GA4 app_instance_id (local, không cần network). Dùng để cross-link sang Adjust.
+        /// </summary>
+        public void GetAppInstanceId(Action<string> callback) {
+            #if HAS_FIREBASE_SDK
+            if (!_isReady) { callback?.Invoke(null); return; }
+            try {
+                FirebaseAnalytics.GetAnalyticsInstanceIdAsync().ContinueWith(task => {
+                    // Only RanToCompletion may read .Result — Faulted/Canceled would throw here
+                    // (off-thread, unhandled). callback still fires exactly once with null in those cases.
+                    string id = task.Status == System.Threading.Tasks.TaskStatus.RanToCompletion ? task.Result : null;
+                    callback?.Invoke(id);
+                });
+            } catch (Exception e) {
+                SDKLogger.Warning("Firebase", $"GetAppInstanceId failed: {e.Message}");
+                callback?.Invoke(null);
+            }
+            #else
+            callback?.Invoke(null);
+            #endif
+        }
     }
 }

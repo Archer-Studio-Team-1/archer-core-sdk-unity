@@ -69,6 +69,7 @@ namespace ArcherStudio.SDK.Tracking {
                 }
 
                 StartCoroutine(ResolveAdjustIdWithRetry());
+                StartCoroutine(ResolveFirebaseAppInstanceIdWithRetry());
 
                 // Subscribe to future consent changes
                 SDKEventBus.Subscribe<ConsentChangedEvent>(OnConsentEvent);
@@ -321,6 +322,13 @@ namespace ArcherStudio.SDK.Tracking {
             return null;
         }
 
+        private FirebaseTrackingProvider GetFirebaseProvider() {
+            foreach (var provider in _providers) {
+                if (provider is FirebaseTrackingProvider fp) return fp;
+            }
+            return null;
+        }
+
         // ─── ID Resolution Retry (network-gated IDs) ───
         // Backoff: 1,2,4,8,16s — dừng khi có ADID hoặc hết attempts.
         private static readonly float[] IdRetryBackoff = { 1f, 2f, 4f, 8f, 16f };
@@ -348,6 +356,31 @@ namespace ArcherStudio.SDK.Tracking {
                 yield return new WaitForSeconds(IdRetryBackoff[attempt]);
             }
             SDKLogger.Warning(Tag, "ADID unresolved after all retries (offline?). Persist sẽ apply lần sau.");
+        }
+
+        private System.Collections.IEnumerator ResolveFirebaseAppInstanceIdWithRetry() {
+            var firebase = GetFirebaseProvider();
+            if (firebase == null) yield break;
+
+            for (int attempt = 0; attempt < IdRetryBackoff.Length; attempt++) {
+                if (!string.IsNullOrEmpty(_currentUserProfile?.FirebaseAppInstanceId)) yield break;
+
+                bool done = false;
+                string resolved = null;
+                firebase.GetAppInstanceId(id => { resolved = id; done = true; });
+
+                float waited = 0f;
+                while (!done && waited < 2f) { waited += Time.unscaledDeltaTime; yield return null; }
+
+                if (!string.IsNullOrEmpty(resolved)) {
+                    UpdateUserProfile(p => p.FirebaseAppInstanceId = resolved);
+                    SDKLogger.Info(Tag, $"app_instance_id resolved on retry #{attempt}: {resolved}");
+                    yield break;
+                }
+
+                yield return new WaitForSeconds(IdRetryBackoff[attempt]);
+            }
+            SDKLogger.Warning(Tag, "app_instance_id unresolved after retries.");
         }
 
         // ─── User Profile ───
