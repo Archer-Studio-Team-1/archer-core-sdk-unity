@@ -340,16 +340,16 @@ namespace ArcherStudio.SDK.IAP {
             PopulateClientIdentity(payload);
 
             var json = JsonUtility.ToJson(payload);
-            IAPCoroutineRunner.Run(SendSubscriptionQuery(subscriptionUrl, json, productId, onComplete));
+            IAPCoroutineRunner.Run(SendSubscriptionQuery(subscriptionUrl, json, productId, onComplete, 0));
         }
 
         private System.Collections.IEnumerator SendSubscriptionQuery(
             string url, string jsonPayload, string productId,
-            Action<SubscriptionStatusResult> onComplete) {
+            Action<SubscriptionStatusResult> onComplete, int attempt) {
 
             SDKLogger.Info(Tag,
                 $"[Diag] Subscription status query → {url} | productId={productId} | " +
-                $"payloadLen={jsonPayload?.Length ?? 0}");
+                $"attempt={attempt + 1}/{MaxRetries + 1} | payloadLen={jsonPayload?.Length ?? 0}");
 
             var request = new UnityWebRequest(url, "POST");
             var bodyRaw = Encoding.UTF8.GetBytes(jsonPayload);
@@ -363,6 +363,34 @@ namespace ArcherStudio.SDK.IAP {
             }
 
             yield return request.SendWebRequest();
+
+            var responseCode = request.responseCode;
+            var isNetworkError = request.result == UnityWebRequest.Result.ConnectionError;
+
+            // 429 rate limited / 5xx / network error: transient — back off and retry.
+            // Unlike the purchase path, a failed status query is not fatal; the
+            // caller (near-expiry poll) decides what to do with a retryable result,
+            // so we surface Retry-After instead of hammering on a fixed cadence.
+            if (responseCode == 429 || responseCode >= 500 || isNetworkError) {
+                var retryAfter = ParseRetryAfterSeconds(request);
+                request.Dispose();
+
+                if (attempt < MaxRetries) {
+                    var baseDelay = attempt < RetryDelays.Length ? RetryDelays[attempt] : RetryDelays[RetryDelays.Length - 1];
+                    var delay = retryAfter > 0 ? Mathf.Max(retryAfter, baseDelay) : baseDelay;
+                    SDKLogger.Warning(Tag,
+                        $"Subscription query transient failure for {productId}: HTTP {responseCode}. " +
+                        $"Retrying in {delay}s (attempt {attempt + 1}/{MaxRetries + 1}).");
+                    yield return new WaitForSecondsRealtime(delay);
+                    yield return SendSubscriptionQuery(url, jsonPayload, productId, onComplete, attempt + 1);
+                } else {
+                    SDKLogger.Warning(Tag,
+                        $"Subscription query rate limited/unreachable for {productId} after retries (HTTP {responseCode}).");
+                    onComplete?.Invoke(SubscriptionStatusResult.Retryable(
+                        $"HTTP {responseCode} after retries", retryAfter));
+                }
+                yield break;
+            }
 
             if (request.result == UnityWebRequest.Result.Success && request.responseCode == 200) {
                 try {
@@ -408,6 +436,17 @@ namespace ArcherStudio.SDK.IAP {
             }
 
             request.Dispose();
+        }
+
+        /// <summary>
+        /// Reads the HTTP Retry-After header (delta-seconds form) from a response.
+        /// Returns 0 when absent or unparseable.
+        /// </summary>
+        private static int ParseRetryAfterSeconds(UnityWebRequest request) {
+            var header = request.GetResponseHeader("Retry-After");
+            if (!string.IsNullOrEmpty(header) && int.TryParse(header, out var seconds) && seconds > 0)
+                return seconds;
+            return 0;
         }
 
         private static SubscriptionStatus MapSubscriptionStatus(string status) {

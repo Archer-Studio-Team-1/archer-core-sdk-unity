@@ -39,11 +39,22 @@ namespace ArcherStudio.SDK.IAP {
         public bool IsAutoRenewing { get; }
         public bool IsFreeTrial { get; }
         public string ErrorMessage { get; }
+        /// <summary>
+        /// True when the failure is transient (rate limit / server unreachable)
+        /// and the caller may retry later. Callers should back off rather than
+        /// hammer the server — see <see cref="RetryAfterSeconds"/>.
+        /// </summary>
+        public bool IsRetryable { get; }
+        /// <summary>
+        /// Server-suggested backoff before retrying, in seconds (from the HTTP
+        /// Retry-After header). 0 when the server gave no hint.
+        /// </summary>
+        public int RetryAfterSeconds { get; }
 
         public SubscriptionStatusResult(bool success, SubscriptionStatus status,
             System.DateTime? expirationDate, System.DateTime? purchaseDate,
             System.DateTime? cancellationDate, bool isAutoRenewing, bool isFreeTrial,
-            string errorMessage) {
+            string errorMessage, bool isRetryable = false, int retryAfterSeconds = 0) {
             Success = success;
             Status = status;
             ExpirationDate = expirationDate;
@@ -52,11 +63,18 @@ namespace ArcherStudio.SDK.IAP {
             IsAutoRenewing = isAutoRenewing;
             IsFreeTrial = isFreeTrial;
             ErrorMessage = errorMessage;
+            IsRetryable = isRetryable;
+            RetryAfterSeconds = retryAfterSeconds;
         }
 
         public static SubscriptionStatusResult Failed(string error) =>
             new SubscriptionStatusResult(false, SubscriptionStatus.Unknown,
                 null, null, null, false, false, error);
+
+        /// <summary>Transient failure the caller should retry after backing off.</summary>
+        public static SubscriptionStatusResult Retryable(string error, int retryAfterSeconds = 0) =>
+            new SubscriptionStatusResult(false, SubscriptionStatus.Unknown,
+                null, null, null, false, false, error, true, retryAfterSeconds);
     }
 
     public enum ProductType {
