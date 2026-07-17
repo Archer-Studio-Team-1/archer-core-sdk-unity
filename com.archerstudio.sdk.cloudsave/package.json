@@ -1,6 +1,6 @@
 {
   "name": "com.archerstudio.sdk.cloudsave",
-  "version": "1.0.1",
+  "version": "1.2.2",
   "displayName": "Archer Studio SDK - Cloud Save",
   "description": "Cloud save module with Firestore backend. Syncs game progress across devices using Google Play Games authentication. Provider abstraction supports future backends (GPGS Saved Games, custom server).",
   "unity": "6000.0",

@@ -1,6 +1,6 @@
 {
   "name": "com.archerstudio.sdk.ads",
-  "version": "1.0.0",
+  "version": "1.2.2",
   "displayName": "Archer Studio SDK - Ads",
   "description": "Ad mediation layer supporting AppLovin MAX, IronSource/LevelPlay, and AdMob. Unified API for Banner, Interstitial, Rewarded, and App Open ads.",
   "unity": "6000.0",

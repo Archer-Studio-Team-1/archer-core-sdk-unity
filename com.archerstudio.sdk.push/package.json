@@ -1,6 +1,6 @@
 {
   "name": "com.archerstudio.sdk.push",
-  "version": "1.0.0",
+  "version": "1.2.2",
   "displayName": "Archer Studio SDK - Push Notifications",
   "description": "Firebase Cloud Messaging wrapper for push notifications.",
   "unity": "6000.0",

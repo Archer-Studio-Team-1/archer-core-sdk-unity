@@ -1,6 +1,6 @@
 {
   "name": "com.archerstudio.sdk.firestore",
-  "version": "0.2.0",
+  "version": "1.2.2",
   "displayName": "Archer Studio SDK - Firestore",
   "description": "Game-agnostic Firestore data plane: T0 server-authoritative currency, structured user data, IAP catalog reads, prepared-bundle fetches, account profile bootstrap. Pairs with firebase-functions/packages/firestore-core. Reuses Firebase Auth state from CloudSave or bootstraps independently.",
   "unity": "6000.0",

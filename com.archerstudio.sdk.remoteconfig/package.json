@@ -1,6 +1,6 @@
 {
   "name": "com.archerstudio.sdk.remoteconfig",
-  "version": "1.0.0",
+  "version": "1.2.2",
   "displayName": "Archer Studio SDK - Remote Config",
   "description": "Firebase Remote Config wrapper with provider pattern, local defaults, and feature flags.",
   "unity": "6000.0",
