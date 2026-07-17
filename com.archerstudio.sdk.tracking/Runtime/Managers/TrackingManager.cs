@@ -75,6 +75,17 @@ namespace ArcherStudio.SDK.Tracking {
                 SDKEventBus.Subscribe<ConsentChangedEvent>(OnConsentEvent);
                 SDKEventBus.Subscribe<ArcherStudio.SDK.Login.LoginSucceededEvent>(OnLoginSucceeded);
 
+                // Pre-read current login state right after subscribing — mirrors the
+                // consent pre-read above. SDKEventBus is fire-and-forget with no replay,
+                // so if LoginModule already signed in (e.g. GPGS auto-login) and published
+                // LoginSucceededEvent before we subscribed, that session's login_id would
+                // otherwise be lost. Backfill it directly from the current provider state.
+                var login = SDKInitializer.Instance?.GetModule("login") as ArcherStudio.SDK.Login.LoginModule;
+                if (login?.Provider?.IsSignedIn == true && !string.IsNullOrEmpty(login.Provider.PlayerId)) {
+                    UpdateUserProfile(p => p.LoginId = login.Provider.PlayerId);
+                    SDKLogger.Info(Tag, $"Pre-init login_id backfilled: {login.Provider.PlayerId}");
+                }
+
                 State = ModuleState.Ready;
                 SDKLogger.Info(Tag, "TrackingManager initialized.");
                 onComplete?.Invoke(true);
