@@ -24,6 +24,11 @@
       "name": "com.adjust.sdk",
       "expression": "",
       "define": "HAS_ADJUST_SDK"
+    },
+    {
+      "name": "com.archerstudio.sdk.login",
+      "expression": "",
+      "define": "HAS_SDK_LOGIN"
     }
   ],
   "noEngineReferences": false

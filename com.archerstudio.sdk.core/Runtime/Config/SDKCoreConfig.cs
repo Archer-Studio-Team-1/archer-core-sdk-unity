@@ -96,5 +96,32 @@ namespace ArcherStudio.SDK.Core {
 
         // Backward compat — modules that read EnableAppCheck directly
         public bool EnableAppCheck => GetActiveSecurityConfig().EnableAppCheck;
+
+        private static SDKCoreConfig _runtimeDefault;
+
+        /// <summary>
+        /// Returns <paramref name="config"/> when set, else the asset at Resources/SDKCoreConfig,
+        /// else a cached instance carrying the field defaults above.
+        ///
+        /// Modules reach for this when a host drives them directly instead of through
+        /// SDKBootstrap: the config is then optional, and a missing one must degrade to
+        /// defaults rather than throw halfway into initialization.
+        /// </summary>
+        public static SDKCoreConfig ResolveOrDefault(SDKCoreConfig config) {
+            if (config != null) return config;
+
+            var fromResources = Resources.Load<SDKCoreConfig>("SDKCoreConfig");
+            if (fromResources != null) return fromResources;
+
+            if (_runtimeDefault == null) {
+                _runtimeDefault = CreateInstance<SDKCoreConfig>();
+                _runtimeDefault.name = "SDKCoreConfig (runtime default)";
+                SDKLogger.Info("Core",
+                    "No SDKCoreConfig supplied and none found in Resources. " +
+                    "Using built-in defaults.");
+            }
+
+            return _runtimeDefault;
+        }
     }
 }

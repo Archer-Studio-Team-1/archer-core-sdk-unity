@@ -62,14 +62,26 @@ namespace ArcherStudio.SDK.IAP {
         // ─── ISDKModule Lifecycle ───
 
         public void InitializeAsync(SDKCoreConfig coreConfig, Action<bool> onComplete) {
+            InitializeAsync(coreConfig, null, onComplete);
+        }
+
+        /// <summary>
+        /// Initialize with an explicit <see cref="IAPConfig"/>, for hosts that drive the module
+        /// directly instead of through SDKBootstrap and keep their own settings asset.
+        /// Either config may be null: core config falls back to defaults, IAP config to
+        /// Resources/IAPConfig.
+        /// </summary>
+        public void InitializeAsync(SDKCoreConfig coreConfig, IAPConfig config, Action<bool> onComplete) {
             State = ModuleState.Initializing;
             Instance = this;
+
+            coreConfig = SDKCoreConfig.ResolveOrDefault(coreConfig);
 
             SDKLogger.Debug(Tag, "IAPManager.InitializeAsync() started.");
             SDKLogger.Debug(Tag, $"  DebugMode={coreConfig.DebugMode}, EnableIAP={coreConfig.EnableIAP}");
 
             // Step 1: Load config
-            _config = Resources.Load<IAPConfig>("IAPConfig");
+            _config = config != null ? config : Resources.Load<IAPConfig>("IAPConfig");
             if (_config == null) {
                 SDKLogger.Warning(Tag,
                     "IAPConfig not found in Resources/IAPConfig. " +

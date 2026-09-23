@@ -73,6 +73,9 @@ namespace ArcherStudio.SDK.Tracking {
 
                 // Subscribe to future consent changes
                 SDKEventBus.Subscribe<ConsentChangedEvent>(OnConsentEvent);
+
+                #if HAS_SDK_LOGIN
+                SDKLogger.Info(Tag, "Login integration: enabled.");
                 SDKEventBus.Subscribe<ArcherStudio.SDK.Login.LoginSucceededEvent>(OnLoginSucceeded);
 
                 // Pre-read current login state right after subscribing — mirrors the
@@ -85,6 +88,16 @@ namespace ArcherStudio.SDK.Tracking {
                     UpdateUserProfile(p => p.LoginId = login.Provider.PlayerId);
                     SDKLogger.Info(Tag, $"Pre-init login_id backfilled: {login.Provider.PlayerId}");
                 }
+                #else
+                // Both branches log on purpose. A project that ships com.archerstudio.sdk.login
+                // must see "Login integration: enabled" at boot; if it sees this line instead,
+                // the versionDefine is broken and login_id would silently vanish from every
+                // event. Info, not Warning: running without the login package is a valid
+                // configuration (game-07 does), and a per-boot warning would cry wolf.
+                SDKLogger.Info(Tag,
+                    "Login integration: disabled — com.archerstudio.sdk.login not installed. " +
+                    "login_id will not be tracked.");
+                #endif
 
                 State = ModuleState.Ready;
                 SDKLogger.Info(Tag, "TrackingManager initialized.");
@@ -101,7 +114,9 @@ namespace ArcherStudio.SDK.Tracking {
 
         public void Dispose() {
             SDKEventBus.Unsubscribe<ConsentChangedEvent>(OnConsentEvent);
+            #if HAS_SDK_LOGIN
             SDKEventBus.Unsubscribe<ArcherStudio.SDK.Login.LoginSucceededEvent>(OnLoginSucceeded);
+            #endif
             State = ModuleState.Disposed;
         }
 
@@ -452,11 +467,13 @@ namespace ArcherStudio.SDK.Tracking {
             OnConsentChanged(e.Status);
         }
 
+        #if HAS_SDK_LOGIN
         private void OnLoginSucceeded(ArcherStudio.SDK.Login.LoginSucceededEvent e) {
             if (string.IsNullOrEmpty(e.PlayerId)) return;
             UpdateUserProfile(p => p.LoginId = e.PlayerId);
             SDKLogger.Info(Tag, $"login_id set from GPGS: {e.PlayerId}");
         }
+        #endif
 
         private void OnUserProfilePropertyChanged(string key, string value) {
             _isDirty = true;

@@ -43,17 +43,47 @@ namespace ArcherStudio.SDK.Core.Editor {
 
         private const string Tag = "SDKSymbolDetector";
 
+        private const string AutoDetectPrefKey = "ArcherStudio.SDK.AutoDetectSymbols";
+        private const string AutoDetectMenuPath = "ArcherStudio/SDK/Auto-Detect Symbols";
+
+        /// <summary>
+        /// Whether the detector may write scripting define symbols on its own.
+        /// Per-machine (EditorPrefs), on by default.
+        ///
+        /// Projects that own their define list — and treat ProjectSettings as something only
+        /// a human edits — turn this off and run detection manually from the Symbol Manager.
+        /// </summary>
+        public static bool AutoDetectEnabled {
+            get => EditorPrefs.GetBool(AutoDetectPrefKey, true);
+            set => EditorPrefs.SetBool(AutoDetectPrefKey, value);
+        }
+
         /// <summary>
         /// Auto-detect SDK symbols on domain reload (compile, play mode, editor start).
         /// </summary>
         static SDKSymbolDetector() {
             // Delay to avoid issues during domain reload
             EditorApplication.delayCall += () => {
+                if (!AutoDetectEnabled) return;
+
                 var changes = DetectChanges();
                 if (changes.Count > 0) {
                     RunDetection();
                 }
             };
+        }
+
+        [MenuItem(AutoDetectMenuPath, false, 21)]
+        private static void ToggleAutoDetect() {
+            AutoDetectEnabled = !AutoDetectEnabled;
+            Debug.Log($"[{Tag}] Auto-detect {(AutoDetectEnabled ? "enabled" : "disabled")}. " +
+                      "Run 'ArcherStudio/SDK/Symbol Manager' to apply symbols manually.");
+        }
+
+        [MenuItem(AutoDetectMenuPath, true)]
+        private static bool ToggleAutoDetectValidate() {
+            Menu.SetChecked(AutoDetectMenuPath, AutoDetectEnabled);
+            return true;
         }
 
         /// <summary>

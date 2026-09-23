@@ -27,10 +27,20 @@ namespace ArcherStudio.SDK.Consent {
         private ConsentConfig _config;
 
         public void InitializeAsync(SDKCoreConfig coreConfig, Action<bool> onComplete) {
+            InitializeAsync(coreConfig, null, onComplete);
+        }
+
+        /// <summary>
+        /// Initialize with an explicit <see cref="ConsentConfig"/>, for hosts that drive the
+        /// module directly instead of through SDKBootstrap and keep their own settings asset.
+        /// A null config falls back to Resources/ConsentConfig.
+        /// </summary>
+        public void InitializeAsync(SDKCoreConfig coreConfig, ConsentConfig config,
+            Action<bool> onComplete) {
             State = ModuleState.Initializing;
 
-            // Try to find ConsentConfig - look for it in Resources
-            _config = Resources.Load<ConsentConfig>("ConsentConfig");
+            // Explicit config wins; otherwise look for it in Resources
+            _config = config != null ? config : Resources.Load<ConsentConfig>("ConsentConfig");
 
             // Load cached consent first
             if (HasCachedConsent()) {
