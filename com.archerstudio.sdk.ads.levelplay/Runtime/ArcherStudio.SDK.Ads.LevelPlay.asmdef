@@ -1,10 +1,9 @@
 {
-  "name": "ArcherStudio.SDK.Ads",
+  "name": "ArcherStudio.SDK.Ads.LevelPlay",
   "rootNamespace": "ArcherStudio.SDK.Ads",
   "references": [
     "ArcherStudio.SDK.Core",
-    "ArcherStudio.SDK.Consent",
-    "ArcherStudio.SDK.Tracking"
+    "ArcherStudio.SDK.Ads"
   ],
   "includePlatforms": [],
   "excludePlatforms": [],
@@ -13,6 +12,12 @@
   "precompiledReferences": [],
   "autoReferenced": true,
   "defineConstraints": [],
-  "versionDefines": [],
+  "versionDefines": [
+    {
+      "name": "com.unity.services.levelplay",
+      "expression": "",
+      "define": "HAS_IRONSOURCE_SDK"
+    }
+  ],
   "noEngineReferences": false
 }

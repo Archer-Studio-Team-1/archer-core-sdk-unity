@@ -13,7 +13,10 @@ Internal SDK for mobile game projects. Modular architecture with UPM package dis
 | `com.archerstudio.sdk.core` | Foundation: init orchestration, dependency graph, event bus, logging, config | — |
 | `com.archerstudio.sdk.consent` | GDPR/CCPA consent management, Google UMP, iOS ATT | core |
 | `com.archerstudio.sdk.tracking` | Event tracking: Firebase Analytics, Adjust attribution | core, consent |
-| `com.archerstudio.sdk.ads` | Ad mediation: AppLovin MAX, IronSource, AdMob | core, consent, tracking |
+| `com.archerstudio.sdk.ads` | Ad facade: placements, frequency cap, revenue routing. Ships **no** mediation — install one of the provider packages below | core, consent, tracking |
+| `com.archerstudio.sdk.ads.max` | AppLovin MAX provider | core, ads |
+| `com.archerstudio.sdk.ads.admob` | Google AdMob provider | core, ads |
+| `com.archerstudio.sdk.ads.levelplay` | IronSource / LevelPlay provider | core, ads |
 | `com.archerstudio.sdk.iap` | In-App Purchase: Unity IAP wrapper, receipt validation | core, consent, tracking |
 | `com.archerstudio.sdk.deeplink` | Deep linking: Unity, Firebase Dynamic Links, Adjust | core |
 | `com.archerstudio.sdk.push` | Push notifications: Firebase Cloud Messaging | core |

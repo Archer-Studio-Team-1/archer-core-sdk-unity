@@ -4,6 +4,7 @@ using UnityEngine;
 #endif
 
 using System;
+using System.Collections.Generic;
 using ArcherStudio.SDK.Core;
 
 namespace ArcherStudio.SDK.Ads {
@@ -28,6 +29,15 @@ namespace ArcherStudio.SDK.Ads {
         private string _pendingRewardedPlacement;
         private string _pendingAppOpenPlacement;
         private bool _rewardedUserRewarded;
+
+        #if HAS_APPLOVIN_MAX_SDK
+        // Load retry. MAX does not retry a failed load on its own, and nothing else does
+        // either: without this, one failed load at boot (no fill, no network) leaves that
+        // format unavailable for the whole session.
+        private const int MaxRetryAttempts = 6;
+        private const float MaxRetryDelaySeconds = 64f;
+        private readonly Dictionary<string, int> _retryAttempts = new Dictionary<string, int>();
+        #endif
 
         public void Initialize(AdConfig config, Action<bool> onComplete) {
             _config = config;
@@ -240,10 +250,12 @@ namespace ArcherStudio.SDK.Ads {
             // Interstitial
             MaxSdkCallbacks.Interstitial.OnAdLoadedEvent += (adUnitId, adInfo) => {
                 SDKLogger.Debug(Tag, $"Interstitial loaded: {adInfo.NetworkName}");
+                ClearLoadRetry(adUnitId);
             };
 
             MaxSdkCallbacks.Interstitial.OnAdLoadFailedEvent += (adUnitId, errorInfo) => {
                 SDKLogger.Warning(Tag, $"Interstitial load failed: {errorInfo.Message} (code={errorInfo.Code})");
+                ScheduleLoadRetry(adUnitId, "Interstitial", () => MaxSdk.LoadInterstitial(adUnitId));
             };
 
             MaxSdkCallbacks.Interstitial.OnAdDisplayedEvent += (adUnitId, adInfo) => {
@@ -274,10 +286,12 @@ namespace ArcherStudio.SDK.Ads {
             // Rewarded
             MaxSdkCallbacks.Rewarded.OnAdLoadedEvent += (adUnitId, adInfo) => {
                 SDKLogger.Debug(Tag, $"Rewarded loaded: {adInfo.NetworkName}");
+                ClearLoadRetry(adUnitId);
             };
 
             MaxSdkCallbacks.Rewarded.OnAdLoadFailedEvent += (adUnitId, errorInfo) => {
                 SDKLogger.Warning(Tag, $"Rewarded load failed: {errorInfo.Message} (code={errorInfo.Code})");
+                ScheduleLoadRetry(adUnitId, "Rewarded", () => MaxSdk.LoadRewardedAd(adUnitId));
             };
 
             MaxSdkCallbacks.Rewarded.OnAdDisplayedEvent += (adUnitId, adInfo) => {
@@ -324,10 +338,12 @@ namespace ArcherStudio.SDK.Ads {
             // App Open
             MaxSdkCallbacks.AppOpen.OnAdLoadedEvent += (adUnitId, adInfo) => {
                 SDKLogger.Debug(Tag, $"AppOpen loaded: {adInfo.NetworkName}");
+                ClearLoadRetry(adUnitId);
             };
 
             MaxSdkCallbacks.AppOpen.OnAdLoadFailedEvent += (adUnitId, errorInfo) => {
                 SDKLogger.Warning(Tag, $"AppOpen load failed: {errorInfo.Message} (code={errorInfo.Code})");
+                ScheduleLoadRetry(adUnitId, "AppOpen", () => MaxSdk.LoadAppOpenAd(adUnitId));
             };
 
             MaxSdkCallbacks.AppOpen.OnAdDisplayedEvent += (adUnitId, adInfo) => {
@@ -353,6 +369,49 @@ namespace ArcherStudio.SDK.Ads {
             MaxSdkCallbacks.AppOpen.OnAdRevenuePaidEvent += (adUnitId, adInfo) => {
                 EmitRevenue(adInfo, "AppOpen");
             };
+        }
+
+        /// <summary>
+        /// Schedule another load attempt with exponential backoff (2^n seconds, capped).
+        /// Gives up after <see cref="MaxRetryAttempts"/> so a bad ad unit or a long offline
+        /// stretch cannot turn into an endless load loop; the next explicit Load call resets it.
+        /// </summary>
+        private void ScheduleLoadRetry(string adUnitId, string format, Action load) {
+            _retryAttempts.TryGetValue(adUnitId, out var attempt);
+            attempt++;
+
+            if (attempt > MaxRetryAttempts) {
+                SDKLogger.Warning(Tag,
+                    $"{format} load failed {MaxRetryAttempts} times for {adUnitId}. " +
+                    "Giving up until the next explicit load.");
+                return;
+            }
+
+            _retryAttempts[adUnitId] = attempt;
+
+            var delay = Math.Min(Math.Pow(2, attempt), MaxRetryDelaySeconds);
+            SDKLogger.Info(Tag,
+                $"{format} load retry {attempt}/{MaxRetryAttempts} in {delay:F0}s ({adUnitId}).");
+
+            var dispatcher = UnityMainThreadDispatcher.Instance;
+            if (dispatcher == null) {
+                SDKLogger.Warning(Tag, "UnityMainThreadDispatcher unavailable. Retry skipped.");
+                return;
+            }
+
+            // EnqueueDelayed starts a coroutine, so it has to run on the main thread. MAX
+            // delivers its callbacks there, but hop through the thread-safe queue otherwise
+            // rather than trust that — this SDK has already been bitten once by a vendor
+            // callback arriving on a worker thread.
+            if (UnityMainThreadDispatcher.IsMainThread()) {
+                dispatcher.EnqueueDelayed((float)delay, load);
+            } else {
+                dispatcher.Enqueue(() => dispatcher.EnqueueDelayed((float)delay, load));
+            }
+        }
+
+        private void ClearLoadRetry(string adUnitId) {
+            _retryAttempts.Remove(adUnitId);
         }
 
         private void EmitRevenue(MaxSdkBase.AdInfo adInfo, string format) {

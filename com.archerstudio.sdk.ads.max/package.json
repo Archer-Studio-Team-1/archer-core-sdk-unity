@@ -1,0 +1,14 @@
+{
+  "name": "com.archerstudio.sdk.ads.max",
+  "version": "1.2.2",
+  "displayName": "Archer Studio SDK - Ads (AppLovin MAX)",
+  "description": "AppLovin MAX mediation provider for com.archerstudio.sdk.ads. Registers itself with AdProviderRegistry; install it only when the project ships MAX.",
+  "unity": "6000.0",
+  "author": {
+    "name": "QuanNV - Team 1"
+  },
+  "dependencies": {
+    "com.archerstudio.sdk.core": "1.0.0",
+    "com.archerstudio.sdk.ads": "1.0.0"
+  }
+}

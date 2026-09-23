@@ -26,6 +26,7 @@ namespace ArcherStudio.SDK.Ads {
         private AdConfig _config;
         private FrequencyCapper _frequencyCapper;
         private AdRevenueTracker _revenueTracker;
+        private ConsentStatus? _initialConsent;
         private readonly Dictionary<string, AdPlacement> _placements =
             new Dictionary<string, AdPlacement>();
 
@@ -33,11 +34,34 @@ namespace ArcherStudio.SDK.Ads {
 
         // ─── ISDKModule Lifecycle ───
 
+        /// <summary>
+        /// Supply the consent state handed to the provider <b>before</b> it initializes.
+        ///
+        /// Mediation SDKs read consent during their own init, so it must be known by then.
+        /// A host running without SDKBootstrap has no SDKInitializer to read ConsentManager
+        /// from, and calls this instead. After initialization this has no effect — use
+        /// <see cref="OnConsentChanged"/> for later updates.
+        /// </summary>
+        public void SetInitialConsent(ConsentStatus consent) {
+            _initialConsent = consent;
+            SDKLogger.Debug(Tag, $"Initial consent set: {consent}");
+        }
+
         public void InitializeAsync(SDKCoreConfig coreConfig, Action<bool> onComplete) {
+            InitializeAsync(coreConfig, null, onComplete);
+        }
+
+        /// <summary>
+        /// Initialize with an explicit <see cref="AdConfig"/>, for hosts that drive the module
+        /// directly instead of through SDKBootstrap and keep their own settings asset.
+        /// A null config falls back to Resources/AdConfig.
+        /// </summary>
+        public void InitializeAsync(SDKCoreConfig coreConfig, AdConfig config,
+            Action<bool> onComplete) {
             State = ModuleState.Initializing;
             Instance = this;
 
-            _config = Resources.Load<AdConfig>("AdConfig");
+            _config = config != null ? config : Resources.Load<AdConfig>("AdConfig");
             if (_config == null) {
                 SDKLogger.Error(Tag, "AdConfig not found in Resources. Cannot initialize.");
                 State = ModuleState.Failed;
@@ -71,12 +95,25 @@ namespace ArcherStudio.SDK.Ads {
             // Subscribe to future consent changes
             SDKEventBus.Subscribe<ConsentChangedEvent>(OnConsentEvent);
 
-            // Pass current consent to provider BEFORE init
-            // (ConsentChangedEvent was already broadcast in batch 1, before AdManager)
-            var consentModule = SDKInitializer.Instance?.GetModule("consent");
-            if (consentModule is ArcherStudio.SDK.Consent.ConsentManager cm) {
-                _provider.OnConsentChanged(cm.CurrentStatus);
-                SDKLogger.Debug(Tag, $"Pre-init consent: {cm.CurrentStatus}");
+            // Pass current consent to provider BEFORE init.
+            // An explicit SetInitialConsent() wins; otherwise read ConsentManager through
+            // SDKInitializer (ConsentChangedEvent was already broadcast in batch 1, before
+            // AdManager).
+            if (_initialConsent.HasValue) {
+                _provider.OnConsentChanged(_initialConsent.Value);
+                SDKLogger.Debug(Tag, $"Pre-init consent (explicit): {_initialConsent.Value}");
+            } else {
+                var consentModule = SDKInitializer.Instance?.GetModule("consent");
+                if (consentModule is ArcherStudio.SDK.Consent.ConsentManager cm) {
+                    _provider.OnConsentChanged(cm.CurrentStatus);
+                    SDKLogger.Debug(Tag, $"Pre-init consent: {cm.CurrentStatus}");
+                } else {
+                    // Not a stub case: the mediation SDK is about to initialize with whatever
+                    // it defaults to, which in an EEA session is a compliance problem.
+                    SDKLogger.Warning(Tag,
+                        "No consent supplied and no ConsentManager available — provider will " +
+                        "initialize with its own default. Call SetInitialConsent() first.");
+                }
             }
 
             // Initialize provider — wrapped in try-catch to prevent stuck
@@ -344,17 +381,15 @@ namespace ArcherStudio.SDK.Ads {
 
         private IAdProvider CreateProvider() {
             var platform = _config.MediationPlatform;
-            switch (platform) {
-                case AdMediationPlatform.AppLovinMax:
-                    return new AppLovinMaxProvider();
-                case AdMediationPlatform.IronSource:
-                    return new IronSourceProvider();
-                case AdMediationPlatform.AdMob:
-                    return new AdMobProvider();
-                default:
-                    SDKLogger.Error(Tag, $"Unknown mediation platform: {platform}");
-                    return null;
-            }
+
+            var provider = AdProviderRegistry.Create(platform);
+            if (provider != null) return provider;
+
+            SDKLogger.Error(Tag,
+                $"No provider registered for {platform}. " +
+                $"Install {AdProviderRegistry.PackageNameFor(platform)}, " +
+                "or point AdConfig.MediationPlatform at a platform whose package is installed.");
+            return null;
         }
 
         private bool TryGetPlacement(string placementId, out AdPlacement placement) {
