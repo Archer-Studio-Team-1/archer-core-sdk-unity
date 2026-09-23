@@ -1,4 +1,7 @@
-#if HAS_UNITY_IAP
+// No HAS_UNITY_IAP guard on this file: server validation talks HTTP to the validation
+// endpoint and parses the receipt as text. It named a private DTO UnityIAPReceipt, which is
+// what the guard was protecting - not a vendor type. Guarding it meant IAPManager, which
+// references the validator unconditionally, could not compile in a project without Unity IAP.
 using System;
 using System.Text;
 using ArcherStudio.SDK.Core;
@@ -544,4 +547,3 @@ namespace ArcherStudio.SDK.IAP {
         }
     }
 }
-#endif

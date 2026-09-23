@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using ArcherStudio.SDK.Core;
 
 namespace ArcherStudio.SDK.Ads {
 
