@@ -58,12 +58,11 @@ namespace ArcherStudio.SDK.Ads {
             // NOTE: facebook_limited_data_use is handled automatically by MAX when
             // UMP/TCF is integrated. MAX reads the TC string and applies LDU internally.
             
-            // ─── COPPA / Age Restriction ───
-            var trackingConfig = Resources.Load<ArcherStudio.SDK.Tracking.TrackingConfig>("TrackingConfig");
-            if (trackingConfig != null) {
-                // MaxSdk.ALPrivacySettings .SetIsAgeRestrictedUser(trackingConfig.EnableCoppaCompliance);
-                SDKLogger.Info(Tag, $"AgeRestricted (COPPA): {trackingConfig.EnableCoppaCompliance}");
-            }
+            // COPPA used to be read here from Resources/TrackingConfig, purely to log it - the
+            // MaxSdk call that would have applied it was commented out. Reading another module's
+            // config meant this package depended on com.archerstudio.sdk.tracking, which defeats
+            // the point of shipping mediation on its own. When age restriction is actually needed,
+            // it belongs in ConsentStatus, which already reaches this provider before init.
 
             SDKLogger.Info(Tag,
                 $"Pre-init consent: HasUserConsent={_lastConsent.CanShowPersonalizedAds}, " +
