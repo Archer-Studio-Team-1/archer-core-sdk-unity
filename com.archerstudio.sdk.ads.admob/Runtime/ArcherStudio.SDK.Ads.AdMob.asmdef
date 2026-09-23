@@ -1,0 +1,23 @@
+{
+  "name": "ArcherStudio.SDK.Ads.AdMob",
+  "rootNamespace": "ArcherStudio.SDK.Ads",
+  "references": [
+    "ArcherStudio.SDK.Core",
+    "ArcherStudio.SDK.Ads"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [],
+  "versionDefines": [
+    {
+      "name": "com.google.ads.mobile",
+      "expression": "",
+      "define": "HAS_ADMOB_SDK"
+    }
+  ],
+  "noEngineReferences": false
+}

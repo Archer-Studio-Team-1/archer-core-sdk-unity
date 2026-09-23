@@ -39,13 +39,18 @@ public interface IAdProvider {
 }
 ```
 
-| Provider | Symbol |
-|---|---|
-| `AppLovinMaxProvider` | `HAS_APPLOVIN_MAX_SDK` |
-| `IronSourceProvider` | `HAS_IRONSOURCE_SDK` |
-| `AdMobProvider` | `HAS_ADMOB_SDK` |
+| Provider | Package | Symbol |
+|---|---|---|
+| `AppLovinMaxProvider` | `com.archerstudio.sdk.ads.max` | `HAS_APPLOVIN_MAX_SDK` |
+| `IronSourceProvider` | `com.archerstudio.sdk.ads.levelplay` | `HAS_IRONSOURCE_SDK` |
+| `AdMobProvider` | `com.archerstudio.sdk.ads.admob` | `HAS_ADMOB_SDK` |
 
-Chọn qua `AdConfig.MediationPlatform` enum → `AdManager.CreateProvider()` switch.
+Mỗi provider nằm ở package riêng và tự đăng ký vào `AdProviderRegistry` bằng
+`[RuntimeInitializeOnLoadMethod]`. `com.archerstudio.sdk.ads` **không** tham chiếu vendor nào —
+project chỉ cài mediation mình thật sự dùng.
+
+Chọn qua `AdConfig.MediationPlatform` enum → `AdManager.CreateProvider()` hỏi registry. Chưa cài
+package tương ứng thì init thất bại kèm log nói rõ tên package cần cài.
 
 ## 3. Module class
 
@@ -86,9 +91,9 @@ Menu: `Assets > Create > ArcherStudio > SDK > Ad Config`.
 | `Runtime/Core/AdRevenueTracker.cs` | Bridge revenue → TrackingManager. |
 | `Runtime/Core/FrequencyCapper.cs` | Cooldown + session limit theo format. |
 | `Runtime/Interfaces/IAdProvider.cs` | Contract 11 phương thức. |
-| `Runtime/Providers/AppLovinMaxProvider.cs` | MAX SDK v5+ (ưu tiên SDK consent flow). |
-| `Runtime/Providers/IronSourceProvider.cs` | LevelPlay. |
-| `Runtime/Providers/AdMobProvider.cs` | Google Mobile Ads. |
+| `com.archerstudio.sdk.ads.max/Runtime/AppLovinMaxProvider.cs` | MAX SDK v5+, retry + backoff khi load fail. |
+| `com.archerstudio.sdk.ads.admob/Runtime/AdMobProvider.cs` | Google Mobile Ads v11: banner/interstitial/rewarded/app-open, `OnAdPaid` → revenue, npa extra khi consent từ chối personalized. |
+| `com.archerstudio.sdk.ads.levelplay/Runtime/IronSourceProvider.cs` | **Chưa viết** — stub. |
 | `Runtime/Models/AdModels.cs` | AdFormat, AdRevenueData, RewardData, AdResult, AdPlacement. |
 | `Runtime/Config/AdConfig.cs` | SO config. |
 | `Runtime/AdsModuleRegistrar.cs` | Auto-register. |
