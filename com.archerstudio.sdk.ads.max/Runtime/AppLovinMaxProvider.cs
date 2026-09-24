@@ -196,7 +196,7 @@ namespace ArcherStudio.SDK.Ads {
         }
 
         public void ShowRewarded(AdPlacement placement, string trackPlacement, Action<AdResult> onComplete) {
-            SDKLogger.Info(Tag, $"ShowRewarded: {placement}");
+            SDKLogger.Info(Tag, $"ShowRewarded: {placement.PlacementId}");
             #if HAS_APPLOVIN_MAX_SDK
             _pendingRewardedCallback = onComplete;
             _pendingRewardedPlacement = placement.PlacementId;
