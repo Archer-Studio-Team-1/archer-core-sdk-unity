@@ -57,11 +57,14 @@ namespace ArcherStudio.SDK.Tracking {
             // Read current consent from ConsentManager BEFORE provider init.
             // ConsentChangedEvent was broadcast in batch 1, before TrackingManager
             // subscribes — so we must read it directly.
+            // com.archerstudio.sdk.consent is optional; without it consent arrives only as events.
+            #if HAS_SDK_CONSENT
             var consentModule = SDKInitializer.Instance?.GetModule("consent");
             if (consentModule is ArcherStudio.SDK.Consent.ConsentManager cm) {
                 _currentConsent = cm.CurrentStatus;
                 SDKLogger.Info(Tag, $"Pre-init consent: {_currentConsent}");
             }
+            #endif
 
             InitializeProviders(() => {
                 if (_currentUserProfile != null) {

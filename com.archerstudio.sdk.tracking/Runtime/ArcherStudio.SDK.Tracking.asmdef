@@ -29,6 +29,11 @@
       "name": "com.archerstudio.sdk.login",
       "expression": "",
       "define": "HAS_SDK_LOGIN"
+    },
+    {
+      "name": "com.archerstudio.sdk.consent",
+      "expression": "",
+      "define": "HAS_SDK_CONSENT"
     }
   ],
   "noEngineReferences": false

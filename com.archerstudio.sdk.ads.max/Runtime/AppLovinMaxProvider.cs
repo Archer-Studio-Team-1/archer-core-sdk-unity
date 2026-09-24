@@ -21,6 +21,10 @@ namespace ArcherStudio.SDK.Ads {
         private AdConfig _config;
         private ConsentStatus _lastConsent = ConsentStatus.Default;
 
+        // False until someone hands over consent. Then MAX gets no consent flags at all and applies its
+        // own regional defaults, instead of an explicit "consented" read from ConsentStatus.Default.
+        private bool _consentSupplied;
+
         // Pending callbacks
         private Action<AdResult> _pendingInterstitialCallback;
         private Action<AdResult> _pendingRewardedCallback;
@@ -53,8 +57,10 @@ namespace ArcherStudio.SDK.Ads {
             }
             
             // MUST set consent flags BEFORE InitializeSdk()
-            MaxSdk.SetHasUserConsent(_lastConsent.CanShowPersonalizedAds);
-            MaxSdk.SetDoNotSell(_lastConsent.IsDoNotSell);
+            if (_consentSupplied) {
+                MaxSdk.SetHasUserConsent(_lastConsent.CanShowPersonalizedAds);
+                MaxSdk.SetDoNotSell(_lastConsent.IsDoNotSell);
+            }
             // NOTE: facebook_limited_data_use is handled automatically by MAX when
             // UMP/TCF is integrated. MAX reads the TC string and applies LDU internally.
             
@@ -64,9 +70,10 @@ namespace ArcherStudio.SDK.Ads {
             // the point of shipping mediation on its own. When age restriction is actually needed,
             // it belongs in ConsentStatus, which already reaches this provider before init.
 
-            SDKLogger.Info(Tag,
-                $"Pre-init consent: HasUserConsent={_lastConsent.CanShowPersonalizedAds}, " +
-                $"DoNotSell={_lastConsent.IsDoNotSell}");
+            SDKLogger.Info(Tag, _consentSupplied
+                ? $"Pre-init consent: HasUserConsent={_lastConsent.CanShowPersonalizedAds}, " +
+                  $"DoNotSell={_lastConsent.IsDoNotSell}"
+                : "Pre-init consent: none supplied, MAX applies its own defaults.");
 
             MaxSdk.SetSdkKey(config.SdkKey);
 
@@ -91,6 +98,7 @@ namespace ArcherStudio.SDK.Ads {
 
         public void OnConsentChanged(ConsentStatus consent) {
             _lastConsent = consent;
+            _consentSupplied = true;
             #if HAS_APPLOVIN_MAX_SDK
             MaxSdk.SetHasUserConsent(consent.CanShowPersonalizedAds);
             MaxSdk.SetDoNotSell(consent.IsDoNotSell);

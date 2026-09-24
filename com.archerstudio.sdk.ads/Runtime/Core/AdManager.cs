@@ -27,6 +27,7 @@ namespace ArcherStudio.SDK.Ads {
         private FrequencyCapper _frequencyCapper;
         private AdRevenueTracker _revenueTracker;
         private ConsentStatus? _initialConsent;
+        private bool _consentLeftToMediation;
         private readonly Dictionary<string, AdPlacement> _placements =
             new Dictionary<string, AdPlacement>();
 
@@ -44,7 +45,20 @@ namespace ArcherStudio.SDK.Ads {
         /// </summary>
         public void SetInitialConsent(ConsentStatus consent) {
             _initialConsent = consent;
+            _consentLeftToMediation = false;
             SDKLogger.Debug(Tag, $"Initial consent set: {consent}");
+        }
+
+        /// <summary>
+        /// Tell the provider nothing about consent, on purpose: the host has no consent module, and the
+        /// mediation SDK should apply its own regional defaults - the ads a game without any consent
+        /// integration would get. Unlike supplying nothing by accident, this logs no warning.
+        /// Call before initialization; a later <see cref="OnConsentChanged"/> still applies.
+        /// </summary>
+        public void LeaveConsentToMediation() {
+            _initialConsent = null;
+            _consentLeftToMediation = true;
+            SDKLogger.Debug(Tag, "Initial consent left to the mediation's own defaults.");
         }
 
         public void InitializeAsync(SDKCoreConfig coreConfig, Action<bool> onComplete) {
@@ -102,12 +116,18 @@ namespace ArcherStudio.SDK.Ads {
             if (_initialConsent.HasValue) {
                 _provider.OnConsentChanged(_initialConsent.Value);
                 SDKLogger.Debug(Tag, $"Pre-init consent (explicit): {_initialConsent.Value}");
+            } else if (_consentLeftToMediation) {
+                SDKLogger.Info(Tag, "No consent module: the provider initializes on the mediation's own defaults.");
             } else {
+                #if HAS_SDK_CONSENT
+                // com.archerstudio.sdk.consent is optional; this fallback only exists when it is installed.
                 var consentModule = SDKInitializer.Instance?.GetModule("consent");
                 if (consentModule is ArcherStudio.SDK.Consent.ConsentManager cm) {
                     _provider.OnConsentChanged(cm.CurrentStatus);
                     SDKLogger.Debug(Tag, $"Pre-init consent: {cm.CurrentStatus}");
-                } else {
+                } else
+                #endif
+                {
                     // Not a stub case: the mediation SDK is about to initialize with whatever
                     // it defaults to, which in an EEA session is a compliance problem.
                     SDKLogger.Warning(Tag,
