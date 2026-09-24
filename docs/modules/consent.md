@@ -2,7 +2,7 @@
 
 Quản lý consent GDPR / CCPA / iOS ATT. Publish `ConsentChangedEvent` để downstream tuân thủ.
 
-**Version**: `1.0.1` · **Deps**: `core` · **Priority**: 0 (init đầu tiên).
+**Version**: `1.3.1` · **Deps**: `core` · **Priority**: 0 (init đầu tiên).
 
 ---
 
@@ -12,7 +12,9 @@ Quản lý consent GDPR / CCPA / iOS ATT. Publish `ConsentChangedEvent` để do
 ConsentManager.CurrentStatus;                         // ConsentStatus
 ConsentManager.SetConsent(bool granted, bool isEea);  // manual override
 ConsentManager.ResetConsent();                         // clear cache + re-prompt
-ConsentManager.ShowCmpForExistingUser(onComplete);    // MAX CMP reshow
+ConsentManager.IsPrivacyOptionsRequired;             // người chơi này cần nút "Privacy settings" (UMP hoặc MAX, chỉ vùng GDPR)
+ConsentManager.ShowPrivacyOptions(onComplete);        // mở lại form; CurrentStatus + cache + ConsentChangedEvent cập nhật trước callback
+ConsentManager.ShowCmpForExistingUser(onComplete);    // [Obsolete] - chuyển tiếp sang ShowPrivacyOptions
 ConsentManager.ApplyPendingFacebookConsent();         // gọi sau FB.Init
 ```
 
@@ -27,7 +29,15 @@ public interface IConsentProvider {
     void RequestConsent(Action<ConsentStatus> onComplete);
     void ResetConsent();
 }
+
+// Tuỳ chọn, từ 1.3.1: provider mở lại được form cho người đã trả lời.
+public interface IPrivacyOptionsProvider {
+    bool IsPrivacyOptionsRequired { get; }
+    void ShowPrivacyOptions(Action<string> onComplete);   // null = thành công
+}
 ```
+
+`GoogleUmpProvider` và `MaxConsentProvider` đều implement `IPrivacyOptionsProvider`. Tách thành interface riêng để provider viết theo `IConsentProvider` cũ không bị hỏng.
 
 | Provider | Symbol gate | Khi dùng |
 |---|---|---|

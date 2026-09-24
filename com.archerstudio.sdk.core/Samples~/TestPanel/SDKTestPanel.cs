@@ -449,7 +449,7 @@ namespace ArcherStudio.SDK.Examples {
             CreateButton(c, "Grant All", OnGrantConsent, CLR_CONSENT);
             CreateButton(c, "Deny All", OnDenyConsent, CLR_CONSENT);
             CreateButton(c, "Reset Consent", OnResetConsent, CLR_CONSENT);
-            CreateButton(c, "Show CMP (MAX)", OnShowCmpForExistingUser, CLR_CONSENT);
+            CreateButton(c, "Privacy Options", OnShowPrivacyOptions, CLR_CONSENT);
             #endif
 
             #if HAS_SDK_ADS
@@ -692,15 +692,15 @@ namespace ArcherStudio.SDK.Examples {
             cm.ResetConsent();
         }
 
-        private void OnShowCmpForExistingUser() {
+        private void OnShowPrivacyOptions() {
             var cm = GetConsentManager();
             if (cm == null) { SDKLogger.Warning(Tag, "ConsentManager not available."); return; }
-            SDKLogger.Info(Tag, "Consent: ShowCmpForExistingUser()");
-            cm.ShowCmpForExistingUser(error => {
+            SDKLogger.Info(Tag, $"Consent: ShowPrivacyOptions() (required={cm.IsPrivacyOptionsRequired})");
+            cm.ShowPrivacyOptions(error => {
                 if (error == null)
-                    SDKLogger.Info(Tag, "CMP flow completed successfully.");
+                    SDKLogger.Info(Tag, $"Privacy options closed. Status: {cm.CurrentStatus}");
                 else
-                    SDKLogger.Warning(Tag, $"CMP flow result: {error}");
+                    SDKLogger.Warning(Tag, $"Privacy options result: {error}");
             });
         }
         #endif

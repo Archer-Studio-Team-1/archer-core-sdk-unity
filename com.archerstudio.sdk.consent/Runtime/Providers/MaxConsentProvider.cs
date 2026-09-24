@@ -18,11 +18,16 @@ namespace ArcherStudio.SDK.Consent {
     /// Configure the privacy flow in Unity: AppLovin > Integration Manager.
     /// Requires HAS_APPLOVIN_MAX_SDK define.
     /// </summary>
-    public class MaxConsentProvider : IConsentProvider {
+    public class MaxConsentProvider : IConsentProvider, IPrivacyOptionsProvider {
         private const string Tag = "Consent-MAX";
 
         private readonly ConsentConfig _config;
         private ConsentStatus _status = ConsentStatus.Default;
+
+        // Captured once MAX reports its configuration; the consent flags themselves are re-read from
+        // MaxSdk every time the status is built, so a reopened form is reflected.
+        private bool _isGdpr;
+        private bool _hasAttConsent = true;
 
         public bool IsConsentRequired => true;
 
@@ -85,6 +90,24 @@ namespace ArcherStudio.SDK.Consent {
             _status = ConsentStatus.Default;
         }
 
+        // ------------------------------------------------------------------ privacy options
+
+        /// <summary>
+        /// True for a player in a GDPR region, with a CMP MAX can reopen. Outside GDPR regions there is
+        /// no answer to change, so no button to offer.
+        /// </summary>
+        public bool IsPrivacyOptionsRequired {
+            get {
+                #if HAS_APPLOVIN_MAX_SDK
+                return _isGdpr && MaxSdk.CmpService != null && MaxSdk.CmpService.HasSupportedCmp;
+                #else
+                return false;
+                #endif
+            }
+        }
+
+        public void ShowPrivacyOptions(Action<string> onComplete) => ShowCmpForExistingUser(onComplete);
+
         /// <summary>
         /// Show CMP dialog for existing users (e.g., from a "Privacy Settings" button).
         /// Only works when a supported CMP (Google UMP, etc.) is integrated.
@@ -101,7 +124,9 @@ namespace ArcherStudio.SDK.Consent {
             SDKLogger.Info(Tag, "Showing CMP for existing user...");
             cmpService.ShowCmpForExistingUser(error => {
                 if (error == null) {
-                    SDKLogger.Info(Tag, "CMP flow completed successfully.");
+                    // The player may have changed their answer; read it again before reporting.
+                    _status = BuildStatus();
+                    SDKLogger.Info(Tag, $"CMP flow completed successfully. Status: {_status}");
                     onComplete?.Invoke(null);
                 } else {
                     SDKLogger.Warning(Tag,
@@ -124,32 +149,24 @@ namespace ArcherStudio.SDK.Consent {
 
             // ─── Read all consent signals from MAX ───
             var geography = sdkConfig.ConsentFlowUserGeography;
-            bool isGdpr = geography == MaxSdkBase.ConsentFlowUserGeography.Gdpr;
-
-            bool hasUserConsent = MaxSdk.HasUserConsent() || !isGdpr;
-            bool doNotSell = MaxSdk.IsDoNotSellSet() && MaxSdk.IsDoNotSell();
+            _isGdpr = geography == MaxSdkBase.ConsentFlowUserGeography.Gdpr;
+            bool isGdpr = _isGdpr;
 
             // iOS ATT — MAX handles ATT automatically when privacy flow is enabled
             #if UNITY_IOS
             var attStatus = sdkConfig.AppTrackingStatus;
-            bool hasAttConsent = attStatus == MaxSdkBase.AppTrackingStatus.Authorized;
+            _hasAttConsent = attStatus == MaxSdkBase.AppTrackingStatus.Authorized;
             #else
-            bool hasAttConsent = true; // Android doesn't have ATT
+            _hasAttConsent = true; // Android doesn't have ATT
             #endif
+            bool hasAttConsent = _hasAttConsent;
 
             // CMP availability
             bool hasCmp = MaxSdk.CmpService != null && MaxSdk.CmpService.HasSupportedCmp;
 
-            bool canPersonalize = hasUserConsent && !doNotSell && hasAttConsent;
-
-            _status = new ConsentStatus(
-                canShowPersonalizedAds: canPersonalize,
-                canCollectAnalytics: hasUserConsent,
-                canTrackAttribution: hasUserConsent && hasAttConsent,
-                isEeaUser: isGdpr,
-                hasAttConsent: hasAttConsent,
-                source: ConsentSource.AppLovinMax,
-                isDoNotSell: doNotSell);
+            _status = BuildStatus();
+            bool doNotSell = _status.IsDoNotSell;
+            bool canPersonalize = _status.CanShowPersonalizedAds;
 
             // ─── Detailed logging ───
             SDKLogger.Info(Tag, "┌─── MAX Privacy Flow Complete ───");
@@ -171,6 +188,22 @@ namespace ArcherStudio.SDK.Consent {
             }
 
             onComplete?.Invoke(_status);
+        }
+
+        /// <summary>Consent as MAX holds it now, for the geography and ATT answer captured at init.</summary>
+        private ConsentStatus BuildStatus() {
+            bool hasUserConsent = MaxSdk.HasUserConsent() || !_isGdpr;
+            bool doNotSell = MaxSdk.IsDoNotSellSet() && MaxSdk.IsDoNotSell();
+            bool canPersonalize = hasUserConsent && !doNotSell && _hasAttConsent;
+
+            return new ConsentStatus(
+                canShowPersonalizedAds: canPersonalize,
+                canCollectAnalytics: hasUserConsent,
+                canTrackAttribution: hasUserConsent && _hasAttConsent,
+                isEeaUser: _isGdpr,
+                hasAttConsent: _hasAttConsent,
+                source: ConsentSource.AppLovinMax,
+                isDoNotSell: doNotSell);
         }
         #endif
     }

@@ -26,6 +26,15 @@ namespace ArcherStudio.SDK.Consent {
         private IConsentProvider _provider;
         private ConsentConfig _config;
 
+        // Tests only: a provider to use instead of the one ConsentConfig selects.
+        private readonly IConsentProvider _providerOverride;
+
+        public ConsentManager() { }
+
+        internal ConsentManager(IConsentProvider providerOverride) {
+            _providerOverride = providerOverride;
+        }
+
         public void InitializeAsync(SDKCoreConfig coreConfig, Action<bool> onComplete) {
             InitializeAsync(coreConfig, null, onComplete);
         }
@@ -51,7 +60,7 @@ namespace ArcherStudio.SDK.Consent {
             LogConsentConfig();
 
             // Create provider based on config
-            _provider = CreateProvider();
+            _provider = _providerOverride ?? CreateProvider();
             SDKLogger.Info(Tag,
                 $"Provider: {_provider?.GetType().Name ?? "(null)"}, " +
                 $"IsConsentRequired: {_provider?.IsConsentRequired ?? false}");
@@ -132,16 +141,70 @@ namespace ArcherStudio.SDK.Consent {
         }
 
         /// <summary>
-        /// Show CMP dialog for existing users (e.g., from a "Privacy Settings" button).
-        /// Only supported when using AppLovin MAX consent provider with a CMP integrated.
+        /// True when this player must be offered a way to change their answer - gate a "Privacy
+        /// settings" button on it. False for a provider that cannot reopen its form, and for a player
+        /// outside the regions that require one.
         /// </summary>
-        public void ShowCmpForExistingUser(Action<string> onComplete) {
-            if (_provider is MaxConsentProvider maxProvider) {
-                maxProvider.ShowCmpForExistingUser(onComplete);
-            } else {
-                SDKLogger.Warning(Tag, "ShowCmpForExistingUser is only supported with AppLovinMax provider.");
-                onComplete?.Invoke("CMP not supported for current provider.");
+        public bool IsPrivacyOptionsRequired =>
+            _provider is IPrivacyOptionsProvider options && options.IsPrivacyOptionsRequired;
+
+        /// <summary>
+        /// Reopens the consent form for a player who already answered. Completes with null on success,
+        /// or an error message. By then <see cref="CurrentStatus"/> holds the new answer, it is cached,
+        /// and <see cref="ConsentChangedEvent"/> has been published, so mediation and analytics follow
+        /// a withdrawn consent without the caller doing anything.
+        /// </summary>
+        public void ShowPrivacyOptions(Action<string> onComplete) {
+            if (!(_provider is IPrivacyOptionsProvider options)) {
+                SDKLogger.Warning(Tag,
+                    $"{_provider?.GetType().Name ?? "No provider"} cannot reopen its consent form.");
+                onComplete?.Invoke("The current consent provider cannot reopen its form.");
+                return;
             }
+
+            options.ShowPrivacyOptions(error => {
+                // Provider callbacks may arrive on the Android UI thread, as during initialization.
+                RunOnMainThread(() => {
+                    if (!string.IsNullOrEmpty(error)) {
+                        onComplete?.Invoke(error);
+                        return;
+                    }
+
+                    CurrentStatus = WithManagerAtt(_provider.GetCurrentStatus());
+                    SaveConsent(CurrentStatus);
+                    BroadcastConsent();
+                    onComplete?.Invoke(null);
+                });
+            });
+        }
+
+        /// <summary>Prefer <see cref="ShowPrivacyOptions"/>, which works with every provider.</summary>
+        [Obsolete("Use ShowPrivacyOptions, which also works with Google UMP.")]
+        public void ShowCmpForExistingUser(Action<string> onComplete) => ShowPrivacyOptions(onComplete);
+
+        /// <summary>
+        /// Keeps the iOS ATT answer this manager asked for. A CMP that does not handle ATT itself reports
+        /// it as granted, and a reopened consent form is no reason to forget what the player said to the
+        /// system prompt.
+        /// </summary>
+        private ConsentStatus WithManagerAtt(ConsentStatus fromProvider) {
+            #if UNITY_IOS
+            bool managerAskedAtt = _config != null && _config.RequestATT &&
+                _config.ProviderType != ConsentProviderType.AppLovinMax;
+            if (!managerAskedAtt || CurrentStatus.HasAttConsent) return fromProvider;
+
+            return new ConsentStatus(
+                canShowPersonalizedAds: fromProvider.CanShowPersonalizedAds,
+                canCollectAnalytics: fromProvider.CanCollectAnalytics,
+                canTrackAttribution: false,
+                isEeaUser: fromProvider.IsEeaUser,
+                hasAttConsent: false,
+                source: fromProvider.Source,
+                isDoNotSell: fromProvider.IsDoNotSell,
+                canStoreAdData: fromProvider.CanStoreAdData);
+            #else
+            return fromProvider; // no ATT outside iOS
+            #endif
         }
 
         private void LogConsentConfig() {

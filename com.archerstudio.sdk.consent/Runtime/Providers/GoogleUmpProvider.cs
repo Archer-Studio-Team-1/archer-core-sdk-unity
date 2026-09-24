@@ -13,7 +13,7 @@ namespace ArcherStudio.SDK.Consent {
     /// Google User Messaging Platform consent provider.
     /// Requires HAS_GOOGLE_UMP scripting define and Google Mobile Ads SDK.
     /// </summary>
-    public class GoogleUmpProvider : IConsentProvider {
+    public class GoogleUmpProvider : IConsentProvider, IPrivacyOptionsProvider {
         private const string Tag = "GoogleUMP";
         private const float UmpTimeoutSeconds = 10f;
 
@@ -165,6 +165,47 @@ namespace ArcherStudio.SDK.Consent {
         public void ResetConsent() {
             #if HAS_GOOGLE_UMP
             ConsentInformation.Reset();
+            #endif
+        }
+
+        // ------------------------------------------------------------------ privacy options
+
+        /// <summary>
+        /// UMP's own answer: Required only for a player in a region where the form applies, and only
+        /// once <see cref="RequestConsent"/> has run <c>ConsentInformation.Update</c>.
+        /// </summary>
+        public bool IsPrivacyOptionsRequired {
+            get {
+                #if HAS_GOOGLE_UMP
+                return ConsentInformation.PrivacyOptionsRequirementStatus ==
+                       PrivacyOptionsRequirementStatus.Required;
+                #else
+                return false;
+                #endif
+            }
+        }
+
+        public void ShowPrivacyOptions(Action<string> onComplete) {
+            #if HAS_GOOGLE_UMP
+            SDKLogger.Info(Tag, "Showing UMP privacy options form...");
+            _isFormShowing = true;
+
+            ConsentForm.ShowPrivacyOptionsForm((FormError showError) => {
+                _isFormShowing = false;
+
+                if (showError != null) {
+                    SDKLogger.Warning(Tag, $"Privacy options form error: {showError.Message}");
+                    onComplete?.Invoke(showError.Message);
+                    return;
+                }
+
+                // UMP writes the new answer to IABTCF_* before this fires, so GetCurrentStatus
+                // already reads it.
+                SDKLogger.Info(Tag, "Privacy options form closed.");
+                onComplete?.Invoke(null);
+            });
+            #else
+            onComplete?.Invoke("Google UMP is not installed (HAS_GOOGLE_UMP not defined).");
             #endif
         }
 
