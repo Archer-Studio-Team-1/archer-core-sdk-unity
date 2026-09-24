@@ -37,9 +37,17 @@ namespace ArcherStudio.SDK.Tracking {
         // ─── ISDKModule Lifecycle ───
 
         public void InitializeAsync(SDKCoreConfig coreConfig, Action<bool> onComplete) {
+            InitializeAsync(coreConfig, null, onComplete);
+        }
+
+        /// <summary>
+        /// Starts tracking on a config the caller built, instead of <c>Resources/TrackingConfig</c>.
+        /// A null config falls back to the Resources asset, which is what <see cref="SDKBootstrap"/> uses.
+        /// </summary>
+        public void InitializeAsync(SDKCoreConfig coreConfig, TrackingConfig config, Action<bool> onComplete) {
             State = ModuleState.Initializing;
 
-            _config = Resources.Load<TrackingConfig>("TrackingConfig");
+            _config = config != null ? config : Resources.Load<TrackingConfig>("TrackingConfig");
 
             // Cache persistent path for thread-safe access in UserProfile
             UserProfile.PersistentDataPath = Application.persistentDataPath;
@@ -110,10 +118,19 @@ namespace ArcherStudio.SDK.Tracking {
 
         public void OnConsentChanged(ConsentStatus consent) {
             _currentConsent = consent;
+            if (!IsDecided(consent)) return;
+
             foreach (var provider in _providers) {
                 provider.SetConsent(consent);
             }
         }
+
+        /// <summary>
+        /// False for <see cref="ConsentStatus.Default"/>: no consent module has answered, so nobody decided
+        /// anything. Pushing it anyway would declare every player a consenting non-EEA user, so providers
+        /// get no consent call at all and each vendor applies its own regional defaults.
+        /// </summary>
+        private static bool IsDecided(ConsentStatus consent) => consent.Source != ConsentSource.Default;
 
         public void Dispose() {
             SDKEventBus.Unsubscribe<ConsentChangedEvent>(OnConsentEvent);
@@ -153,7 +170,7 @@ namespace ArcherStudio.SDK.Tracking {
                         RunOnMainThread(() => {
                             if (success) {
                                 SDKLogger.Info(Tag, $"Provider '{provider.ProviderId}' initialized.");
-                                provider.SetConsent(_currentConsent);
+                                if (IsDecided(_currentConsent)) provider.SetConsent(_currentConsent);
 
                                 if (provider.ProviderId == "firebase") {
                                     // V2: CalculateRetentionDays removed (day_since_install not in v2 spec)
@@ -251,7 +268,7 @@ namespace ArcherStudio.SDK.Tracking {
         public void RegisterProvider(ITrackingProvider provider) {
             if (provider == null) return;
             _providers.Add(provider);
-            provider.SetConsent(_currentConsent);
+            if (IsDecided(_currentConsent)) provider.SetConsent(_currentConsent);
             SDKLogger.Info(Tag, $"Registered custom provider: {provider.ProviderId}");
         }
 

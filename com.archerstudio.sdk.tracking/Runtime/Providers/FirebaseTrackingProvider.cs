@@ -36,7 +36,11 @@ namespace ArcherStudio.SDK.Tracking {
             }
 
             try {
-                ApplyFirebaseConsent(_currentConsent);
+                // Default means no consent module has answered: leave consent mode and collection to
+                // Firebase's own defaults and the manifest, rather than declaring everything granted.
+                if (_currentConsent.Source != Core.ConsentSource.Default) {
+                    ApplyFirebaseConsent(_currentConsent);
+                }
             } catch (Exception e) {
                 SDKLogger.Error("Firebase", $"Analytics setup error: {e.Message}");
             }

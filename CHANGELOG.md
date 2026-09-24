@@ -44,6 +44,9 @@ AdMob or LevelPlay without touching consent.
   needs a matching `Resources` folder.
 - `SDKCoreConfig.ResolveOrDefault` — falls back to `Resources`, then to built-in
   defaults.
+- `TrackingManager.InitializeAsync(SDKCoreConfig, TrackingConfig, Action<bool>)` —
+  the same config-taking overload for tracking, so a host no longer needs
+  `Resources/TrackingConfig`.
 - Retry with exponential backoff on ad load failure (MAX and AdMob): 2ⁿ seconds,
   capped at 64s, six attempts, reset on a successful load.
 - `ArcherStudio/SDK/Auto-Detect Symbols` — a per-machine toggle for the symbol
@@ -76,6 +79,17 @@ AdMob or LevelPlay without touching consent.
   drops the package; adding it back needs no change here.
 
 ### Fixed
+
+- **Tracking no longer declares consent nobody gave.** Without a consent module,
+  `TrackingManager` pushed `ConsentStatus.Default` — all granted, non-EEA — to
+  every provider: Firebase set consent mode to granted and enabled collection,
+  and Adjust sent third-party sharing flags before `InitSdk`, marking every
+  player a consenting non-EEA user. A status whose `Source` is `Default` now
+  reaches no provider, and each vendor keeps its own regional defaults. Adjust's
+  pre-init `TrackMeasurementConsent(true)` is unchanged. Adjust also skipped the
+  first post-init `SetConsent` as an echo of the pre-init call; it now skips it
+  only when that call actually sent sharing flags, so the first real answer is
+  not lost.
 
 - **One failed ad load at boot no longer disables that format for the session.**
   MAX only logged the failure, and nothing retried, so a cold start without fill

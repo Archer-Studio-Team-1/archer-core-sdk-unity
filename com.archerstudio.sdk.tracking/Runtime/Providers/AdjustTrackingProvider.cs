@@ -20,6 +20,7 @@ namespace ArcherStudio.SDK.Tracking {
 
         private bool _isInited;
         private bool _consentApplied;
+        private bool _preInitSharingSent;
         private bool _sdkStarted;
         private Core.ConsentStatus _pendingMeasurementConsent;
         private readonly TrackingConfig _config;
@@ -663,7 +664,15 @@ namespace ArcherStudio.SDK.Tracking {
 
         private void ApplyConsentBeforeInit(ConsentStatus consent) {
             #if HAS_ADJUST_SDK
-            SendThirdPartySharing(consent);
+            // Default means no consent module has answered. Sending it would tell Adjust, and every
+            // partner it forwards to, that this is a consenting non-EEA player - so send no sharing
+            // flags at all and let Adjust apply its own defaults (and any TCF string on the device).
+            if (consent.Source == ConsentSource.Default) {
+                SDKLogger.Info("Adjust", "  No consent decision: third-party sharing left to Adjust's defaults.");
+            } else {
+                SendThirdPartySharing(consent);
+                _preInitSharingSent = true;
+            }
             // TrackMeasurementConsent MUST be called before InitSdk() for non-GDPR regions.
             // Without this, Adjust rejects the install session with "measurement consent required".
             Adjust.TrackMeasurementConsent(true);
@@ -673,11 +682,15 @@ namespace ArcherStudio.SDK.Tracking {
 
         public void SetConsent(ConsentStatus consent) {
             #if HAS_ADJUST_SDK
+            // Nobody has decided: nothing to send, and the next real answer must not be mistaken for
+            // the echo of a pre-init call that never happened.
+            if (consent.Source == ConsentSource.Default) return;
+
             // Store consent for MeasurementConsent (sent on session start)
             _pendingMeasurementConsent = consent;
 
-            if (!_consentApplied) {
-                // First call after init: TPS already sent pre-init → skip duplicate.
+            if (!_consentApplied && _preInitSharingSent) {
+                // First call after init echoes the consent already sent pre-init → skip duplicate.
                 // MeasurementConsent will be sent in OnSessionSuccess when SDK is started.
                 _consentApplied = true;
                 SDKLogger.Info("Adjust",
