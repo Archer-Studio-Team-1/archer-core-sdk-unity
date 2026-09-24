@@ -45,26 +45,26 @@ Add to your project's `Packages/manifest.json`. Install the one mediation the ga
 ```json
 {
   "dependencies": {
-    "com.archerstudio.sdk.core": "git+https://github.com/Archer-Studio-Team-1/archer-core-sdk-unity.git?path=com.archerstudio.sdk.core#v1.3.0",
-    "com.archerstudio.sdk.consent": "git+https://github.com/Archer-Studio-Team-1/archer-core-sdk-unity.git?path=com.archerstudio.sdk.consent#v1.3.0",
-    "com.archerstudio.sdk.tracking": "git+https://github.com/Archer-Studio-Team-1/archer-core-sdk-unity.git?path=com.archerstudio.sdk.tracking#v1.3.0",
-    "com.archerstudio.sdk.ads": "git+https://github.com/Archer-Studio-Team-1/archer-core-sdk-unity.git?path=com.archerstudio.sdk.ads#v1.3.0",
-    "com.archerstudio.sdk.ads.max": "git+https://github.com/Archer-Studio-Team-1/archer-core-sdk-unity.git?path=com.archerstudio.sdk.ads.max#v1.3.0",
-    "com.archerstudio.sdk.iap": "git+https://github.com/Archer-Studio-Team-1/archer-core-sdk-unity.git?path=com.archerstudio.sdk.iap#v1.3.0",
-    "com.archerstudio.sdk.deeplink": "git+https://github.com/Archer-Studio-Team-1/archer-core-sdk-unity.git?path=com.archerstudio.sdk.deeplink#v1.3.0",
-    "com.archerstudio.sdk.push": "git+https://github.com/Archer-Studio-Team-1/archer-core-sdk-unity.git?path=com.archerstudio.sdk.push#v1.3.0",
-    "com.archerstudio.sdk.remoteconfig": "git+https://github.com/Archer-Studio-Team-1/archer-core-sdk-unity.git?path=com.archerstudio.sdk.remoteconfig#v1.3.0"
+    "com.archerstudio.sdk.core": "git+https://github.com/Archer-Studio-Team-1/archer-core-sdk-unity.git?path=com.archerstudio.sdk.core#v1.3.1",
+    "com.archerstudio.sdk.consent": "git+https://github.com/Archer-Studio-Team-1/archer-core-sdk-unity.git?path=com.archerstudio.sdk.consent#v1.3.1",
+    "com.archerstudio.sdk.tracking": "git+https://github.com/Archer-Studio-Team-1/archer-core-sdk-unity.git?path=com.archerstudio.sdk.tracking#v1.3.1",
+    "com.archerstudio.sdk.ads": "git+https://github.com/Archer-Studio-Team-1/archer-core-sdk-unity.git?path=com.archerstudio.sdk.ads#v1.3.1",
+    "com.archerstudio.sdk.ads.max": "git+https://github.com/Archer-Studio-Team-1/archer-core-sdk-unity.git?path=com.archerstudio.sdk.ads.max#v1.3.1",
+    "com.archerstudio.sdk.iap": "git+https://github.com/Archer-Studio-Team-1/archer-core-sdk-unity.git?path=com.archerstudio.sdk.iap#v1.3.1",
+    "com.archerstudio.sdk.deeplink": "git+https://github.com/Archer-Studio-Team-1/archer-core-sdk-unity.git?path=com.archerstudio.sdk.deeplink#v1.3.1",
+    "com.archerstudio.sdk.push": "git+https://github.com/Archer-Studio-Team-1/archer-core-sdk-unity.git?path=com.archerstudio.sdk.push#v1.3.1",
+    "com.archerstudio.sdk.remoteconfig": "git+https://github.com/Archer-Studio-Team-1/archer-core-sdk-unity.git?path=com.archerstudio.sdk.remoteconfig#v1.3.1"
   }
 }
 ```
 
 Or via SSH:
 ```
-git+git@github.com:Archer-Studio-Team-1/archer-core-sdk-unity.git?path=com.archerstudio.sdk.core#v1.3.0
+git+git@github.com:Archer-Studio-Team-1/archer-core-sdk-unity.git?path=com.archerstudio.sdk.core#v1.3.1
 ```
 
 ## Versioning
 
-Uses git tags: `v1.2.2`, `v1.3.0`, etc. One tag covers every package - the repo is a monorepo and the packages move together.
+Uses git tags: `v1.2.2`, `v1.3.0`, `v1.3.1`, etc. One tag covers every package - the repo is a monorepo and the packages move together.
 
-To update SDK in your project, change the tag in manifest.json (e.g., `#v1.2.2` → `#v1.3.0`).
+To update SDK in your project, change the tag in manifest.json (e.g., `#v1.3.0` → `#v1.3.1`).
