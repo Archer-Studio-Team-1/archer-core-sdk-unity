@@ -1,6 +1,6 @@
 {
   "name": "com.archerstudio.sdk.deeplink",
-  "version": "1.3.1",
+  "version": "1.3.0",
   "displayName": "Archer Studio SDK - Deep Link",
   "description": "Deep linking support with Unity, Firebase Dynamic Links, and Adjust deep links.",
   "unity": "6000.0",

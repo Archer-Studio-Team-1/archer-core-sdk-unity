@@ -2,7 +2,7 @@
 
 Quản lý consent GDPR / CCPA / iOS ATT. Publish `ConsentChangedEvent` để downstream tuân thủ.
 
-**Version**: `1.3.1` · **Deps**: `core` · **Priority**: 0 (init đầu tiên).
+**Version**: `1.3.0` · **Deps**: `core` · **Priority**: 0 (init đầu tiên).
 
 ---
 
@@ -30,7 +30,7 @@ public interface IConsentProvider {
     void ResetConsent();
 }
 
-// Tuỳ chọn, từ 1.3.1: provider mở lại được form cho người đã trả lời.
+// Tuỳ chọn, từ 1.3.0: provider mở lại được form cho người đã trả lời.
 public interface IPrivacyOptionsProvider {
     bool IsPrivacyOptionsRequired { get; }
     void ShowPrivacyOptions(Action<string> onComplete);   // null = thành công
