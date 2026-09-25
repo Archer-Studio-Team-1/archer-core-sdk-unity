@@ -291,6 +291,10 @@ namespace ArcherStudio.SDK.Core.Editor {
             var changes = new List<SymbolChange>();
 
             foreach (var entry in Entries) {
+                // No detection type (DEV, PRODUCTION): a symbol the project owns, not an SDK to sync.
+                // Treating it as "SDK absent" removed the environment define on every domain reload.
+                if (string.IsNullOrEmpty(entry.DetectionType)) continue;
+
                 bool sdkPresent = IsTypeAvailable(entry.DetectionType);
                 bool symbolDefined = currentSymbols.Contains(entry.Symbol);
 
