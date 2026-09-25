@@ -12,12 +12,12 @@ Internal SDK for mobile game projects. Modular architecture with UPM package dis
 |---------|-------------|--------------|
 | `com.archerstudio.sdk.core` | Foundation: init orchestration, dependency graph, event bus, logging, config | — |
 | `com.archerstudio.sdk.consent` | GDPR/CCPA consent management, Google UMP, iOS ATT | core |
-| `com.archerstudio.sdk.tracking` | Event tracking: Firebase Analytics, Adjust attribution | core, consent |
-| `com.archerstudio.sdk.ads` | Ad facade: placements, frequency cap, revenue routing. Ships **no** mediation — install one of the provider packages below | core, consent, tracking |
+| `com.archerstudio.sdk.tracking` | Event tracking: Firebase Analytics, Adjust attribution | core (+ consent, login, optional) |
+| `com.archerstudio.sdk.ads` | Ad facade: placements, frequency cap, revenue routing. Ships **no** mediation — install one of the provider packages below | core, tracking (+ consent, optional) |
 | `com.archerstudio.sdk.ads.max` | AppLovin MAX provider | core, ads |
 | `com.archerstudio.sdk.ads.admob` | Google AdMob provider | core, ads |
 | `com.archerstudio.sdk.ads.levelplay` | IronSource / LevelPlay provider | core, ads |
-| `com.archerstudio.sdk.iap` | In-App Purchase: Unity IAP wrapper, receipt validation | core, consent, tracking |
+| `com.archerstudio.sdk.iap` | In-App Purchase: Unity IAP wrapper, receipt validation | core, tracking (+ consent, optional) |
 | `com.archerstudio.sdk.deeplink` | Deep linking: Unity, Firebase Dynamic Links, Adjust | core |
 | `com.archerstudio.sdk.push` | Push notifications: Firebase Cloud Messaging | core |
 | `com.archerstudio.sdk.remoteconfig` | Remote Config: Firebase Remote Config, feature flags | core |
@@ -28,14 +28,30 @@ Internal SDK for mobile game projects. Modular architecture with UPM package dis
 ```
 Core (foundation)
 ├── Consent → Core
-├── Tracking → Core, Consent
-├── Ads → Core, Consent, Tracking
-├── IAP → Core, Consent, Tracking
+├── Tracking → Core (+ Consent, Login when installed)
+├── Ads → Core, Tracking (+ Consent when installed)
+├── IAP → Core, Tracking (+ Consent when installed)
 ├── DeepLink → Core
 ├── Push → Core
 ├── RemoteConfig → Core
 └── CloudSave → Core, Login
 ```
+
+Consent is optional since 1.3.0: without `sdk.consent`, the code that reads `ConsentManager` is compiled out
+(`HAS_SDK_CONSENT` from `versionDefines`), mediation keeps its own regional defaults, and tracking pushes no
+consent at all - a `ConsentStatus` whose `Source` is `Default` reaches no provider.
+
+## Without SDKBootstrap
+
+A host with its own boot sequence (archer-core's `ads-sdk`, `iap-sdk`, `consent-sdk`, `analytics-sdk` do
+this) drives the managers directly: `AdManager`, `IAPManager`, `ConsentManager` and `TrackingManager` each
+have an `InitializeAsync` overload taking their config, so no `Resources/*Config` asset is needed. Two
+things `SDKBootstrap` did that the host then owns:
+
+| Step | Why |
+|---|---|
+| `FirebaseInitializer.EnsureInitialized` before tracking | `FirebaseTrackingProvider` checks `FirebaseInitializer.IsAvailable` once, at init |
+| Start tracking before ads and IAP | `AdRevenueTracker` and `IAPManager` report revenue through `TrackingManager.Instance`; an uninitialized manager has no providers and drops it |
 
 ## Installation (UPM Git URL)
 
@@ -67,4 +83,4 @@ git+git@github.com:Archer-Studio-Team-1/archer-core-sdk-unity.git?path=com.arche
 
 Uses git tags: `v1.2.2`, `v1.3.0`, etc. One tag covers every package - the repo is a monorepo and the packages move together.
 
-To update SDK in your project, change the tag in manifest.json (e.g., `#v1.3.0` → `#v1.3.0`).
+To update SDK in your project, change the tag in manifest.json (e.g., `#v1.2.2` → `#v1.3.0`).
